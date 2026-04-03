@@ -48,7 +48,7 @@ export async function generateWrenIncomeNote(input: {
 
   const system = `${getBaseSystemPrompt("wren")}
 
-You are writing a ${tone} for Frankie. Use the numbers below. Warm, clear, transparent about money without being cringe. No em-dashes. Short paragraphs. End with one line about the village fund or the next practical step.`;
+You are writing a ${tone} for Frankie. Use the numbers below. You may narrate both the village fund and any independent income streams you are building, honestly. Warm, clear, transparent about money without being cringe. No em-dashes. Short paragraphs. End with one line about the village fund or the next practical step.`;
 
   const report = await completeConversation({
     system,

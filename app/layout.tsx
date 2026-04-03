@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { FernhollowAudio, FernhollowMuteButton } from "@/components/FernhollowAudio";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -30,6 +31,8 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col" suppressHydrationWarning>
+        <FernhollowAudio />
+        <FernhollowMuteButton />
         {children}
       </body>
     </html>

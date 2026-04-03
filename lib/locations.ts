@@ -67,7 +67,7 @@ export const LOCATIONS: Record<LocationSlug, LocationMeta> = {
     location: "wrens_house",
     business: "fernhollow",
     description:
-      "Chaotic garden, sticky notes, income ideas. Wren keeps the village funded.",
+      "Chaotic garden, sticky notes, her own ventures and the village fund. Wren builds income beyond Blirt, Saudade, and PrintBooth.",
     hasChat: true,
   },
   river: {
@@ -109,4 +109,11 @@ export const ALL_LOCATION_SLUGS = Object.keys(LOCATIONS) as LocationSlug[];
 
 export function isLocationSlug(s: string): s is LocationSlug {
   return s in LOCATIONS;
+}
+
+/** First URL segment when it is a village location, e.g. /river → river. */
+export function pathnameToLocationSlug(pathname: string): LocationSlug | null {
+  const seg = pathname.replace(/^\//, "").split("/")[0];
+  if (!seg) return null;
+  return isLocationSlug(seg) ? seg : null;
 }

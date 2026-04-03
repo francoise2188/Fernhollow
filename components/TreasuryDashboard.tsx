@@ -120,8 +120,9 @@ export function TreasuryDashboard() {
           Wren&apos;s treasury
         </h2>
         <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">
-          Income and expenses for the village fund. Payhip sales can log here
-          automatically via webhook.
+          Income and expenses flowing into the village fund. Wren builds her own
+          streams too (not only Blirt, Saudade, PrintBooth). Payhip can log
+          sales here via webhook.
         </p>
 
         <div className="mt-4 flex flex-wrap items-end gap-3">

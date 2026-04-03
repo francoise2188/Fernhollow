@@ -1,0 +1,28 @@
+Stage 0.3 checklist -- add real files here; swap placeholders when ready.
+Served in the app at /assets/fernhollow/...
+
+characters/
+  clover-sprite.png
+  rosie-sprite.png
+  scout-sprite.png
+  wren-sprite.png
+  pip-bird.png
+  fig-bunny.png
+  rue-fox.png
+  hedgehog.png
+
+world/
+  village-tileset.png
+  houses-tileset.png
+  nature-tileset.png
+
+ui/
+  chat-bubble.png
+  nameplate.png
+
+audio/
+  forest-ambience.mp3
+  background-music.mp3
+  birdsong.mp3
+  river.mp3
+  fireplace.mp3

@@ -6,6 +6,7 @@ import {
 } from "./lib/auth-constants";
 
 function isPublicPath(pathname: string): boolean {
+  if (pathname.startsWith("/assets/")) return true;
   if (pathname.startsWith("/api/cron/")) return true;
   if (pathname === "/waitlist") return true;
   if (pathname.startsWith("/products")) return true;
@@ -46,6 +47,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp3)$).*)",
   ],
 };

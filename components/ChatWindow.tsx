@@ -26,7 +26,13 @@ function ChatSkeleton() {
   );
 }
 
-function ChatWindowInner({ slug }: { slug: LocationSlug }) {
+function ChatWindowInner({
+  slug,
+  variant = "default",
+}: {
+  slug: LocationSlug;
+  variant?: "default" | "dialogue";
+}) {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Row[]>([]);
   const [input, setInput] = useState("");
@@ -103,19 +109,40 @@ function ChatWindowInner({ slug }: { slug: LocationSlug }) {
     }
   }, [sessionId, slug, input]);
 
+  const outer =
+    variant === "dialogue"
+      ? "flex min-h-[320px] flex-col rounded-xl border border-stone-600/80 bg-stone-950/90"
+      : "flex min-h-[420px] flex-col rounded-2xl border border-stone-200 bg-white/90 dark:border-stone-700 dark:bg-stone-900/90";
+
   return (
-    <div className="flex min-h-[420px] flex-col rounded-2xl border border-stone-200 bg-white/90 dark:border-stone-700 dark:bg-stone-900/90">
-      <div className="max-h-[min(60vh,520px)] flex-1 space-y-3 overflow-y-auto p-4 text-sm leading-relaxed">
+    <div className={outer}>
+      <div
+        className={
+          variant === "dialogue"
+            ? "max-h-[min(50vh,420px)] flex-1 space-y-3 overflow-y-auto p-3 text-sm leading-relaxed text-stone-100"
+            : "max-h-[min(60vh,520px)] flex-1 space-y-3 overflow-y-auto p-4 text-sm leading-relaxed"
+        }
+      >
         {loadingHistory ? (
-          <p className="text-stone-500">Loading your conversation…</p>
+          <p
+            className={
+              variant === "dialogue" ? "text-stone-400" : "text-stone-500"
+            }
+          >
+            Loading your conversation…
+          </p>
         ) : null}
         {messages.map((m, i) => (
           <div
             key={`${m.role}-${i}`}
             className={
               m.role === "user"
-                ? "ml-8 rounded-2xl rounded-br-sm bg-emerald-100 px-4 py-3 text-stone-900 dark:bg-emerald-900/40 dark:text-stone-50"
-                : "mr-8 rounded-2xl rounded-bl-sm bg-stone-100 px-4 py-3 text-stone-800 dark:bg-stone-800 dark:text-stone-100"
+                ? variant === "dialogue"
+                  ? "ml-8 rounded-2xl rounded-br-sm bg-emerald-900/50 px-4 py-3 text-stone-50"
+                  : "ml-8 rounded-2xl rounded-br-sm bg-emerald-100 px-4 py-3 text-stone-900 dark:bg-emerald-900/40 dark:text-stone-50"
+                : variant === "dialogue"
+                  ? "mr-8 rounded-2xl rounded-bl-sm bg-stone-800 px-4 py-3 text-stone-100"
+                  : "mr-8 rounded-2xl rounded-bl-sm bg-stone-100 px-4 py-3 text-stone-800 dark:bg-stone-800 dark:text-stone-100"
             }
           >
             <span className="whitespace-pre-wrap">{m.content}</span>
@@ -123,11 +150,23 @@ function ChatWindowInner({ slug }: { slug: LocationSlug }) {
         ))}
       </div>
       {error ? (
-        <p className="border-t border-stone-200 px-4 py-2 text-sm text-rose-600 dark:border-stone-700 dark:text-rose-400">
+        <p
+          className={
+            variant === "dialogue"
+              ? "border-t border-stone-600/80 px-4 py-2 text-sm text-rose-300"
+              : "border-t border-stone-200 px-4 py-2 text-sm text-rose-600 dark:border-stone-700 dark:text-rose-400"
+          }
+        >
           {error}
         </p>
       ) : null}
-      <div className="flex gap-2 border-t border-stone-200 p-3 dark:border-stone-700">
+      <div
+        className={
+          variant === "dialogue"
+            ? "flex gap-2 border-t border-stone-600/80 p-3"
+            : "flex gap-2 border-t border-stone-200 p-3 dark:border-stone-700"
+        }
+      >
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -139,7 +178,11 @@ function ChatWindowInner({ slug }: { slug: LocationSlug }) {
           }}
           rows={2}
           placeholder="Say something…"
-          className="min-h-[44px] flex-1 resize-none rounded-xl border border-stone-200 bg-white px-3 py-2 text-stone-900 placeholder:text-stone-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-stone-600 dark:bg-stone-950 dark:text-stone-50"
+          className={
+            variant === "dialogue"
+              ? "min-h-[44px] flex-1 resize-none rounded-lg border border-stone-600 bg-stone-900 px-3 py-2 text-stone-100 placeholder:text-stone-500 focus:border-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-600/30"
+              : "min-h-[44px] flex-1 resize-none rounded-xl border border-stone-200 bg-white px-3 py-2 text-stone-900 placeholder:text-stone-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-stone-600 dark:bg-stone-950 dark:text-stone-50"
+          }
           disabled={loading || !sessionId}
         />
         <button
@@ -155,7 +198,13 @@ function ChatWindowInner({ slug }: { slug: LocationSlug }) {
   );
 }
 
-export function ChatWindow({ slug }: { slug: LocationSlug }) {
+export function ChatWindow({
+  slug,
+  variant = "default",
+}: {
+  slug: LocationSlug;
+  variant?: "default" | "dialogue";
+}) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -166,5 +215,5 @@ export function ChatWindow({ slug }: { slug: LocationSlug }) {
     return <ChatSkeleton />;
   }
 
-  return <ChatWindowInner slug={slug} />;
+  return <ChatWindowInner slug={slug} variant={variant} />;
 }

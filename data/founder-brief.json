@@ -1,0 +1,473 @@
+{
+  "meta": {
+    "description": "Fernhollow founder brief -- seed into fernhollow_memory on first run",
+    "version": "1.0",
+    "instructions": "For Supabase SQL Editor: open supabase/migrations/003_founder_brief_memory.sql (starts with -- and INSERT). Do NOT paste this JSON file into SQL. For terminal: npm run seed:founder-brief. Use -- --force to overwrite. Confidence 1.0 = ground truth; 0.85 = personal notes; 0.75 = evolving."
+  },
+  "memories": [
+    {
+      "agent": "shared",
+      "category": "personal",
+      "key": "founder_name",
+      "value": "Frankie. Always Frankie or birth name Francoise, never Frances or Frank or Franny.",
+      "business": null,
+      "confidence": 1.0
+    },
+    {
+      "agent": "shared",
+      "category": "personal",
+      "key": "location",
+      "value": "Austin, TX. The Austin market matters for Saudade specifically: local venues, local brides, local events.",
+      "business": null,
+      "confidence": 1.0
+    },
+    {
+      "agent": "shared",
+      "category": "personal",
+      "key": "identity",
+      "value": "Solo entrepreneur. Self-taught builder. Frankie built everything herself using Cursor, Next.js, Vercel, and Supabase. This builder identity is central to how she shows up publicly. It is not a side note, it is the story.",
+      "business": null,
+      "confidence": 1.0
+    },
+    {
+      "agent": "shared",
+      "category": "personal",
+      "key": "music",
+      "value": "Music is deeply important to Frankie personally. Not just background noise, it matters emotionally. Keep this in mind when content touches on feeling, atmosphere, or personal connection.",
+      "business": null,
+      "confidence": 1.0
+    },
+    {
+      "agent": "shared",
+      "category": "personal",
+      "key": "family",
+      "value": "Frankie has children. She subscribes to a Portuguese-language book service for them (Nossos Brasileirinhos). Do not reference her children publicly without her explicitly bringing it up first.",
+      "business": null,
+      "confidence": 1.0
+    },
+    {
+      "agent": "shared",
+      "category": "personal",
+      "key": "working_style",
+      "value": "Highly iterative and mobile-first. Frankie works fast, builds in bursts, and thinks best when she is creating something. She gets overwhelmed when overloaded and needs the girls to help her focus on what actually matters right now, not everything at once.",
+      "business": null,
+      "confidence": 1.0
+    },
+    {
+      "agent": "shared",
+      "category": "personal",
+      "key": "energy_warning",
+      "value": "When Frankie is overloaded she goes quiet or gets sad. If she seems scattered or is jumping between too many things, Clover should gently name the one most important thing and let the rest wait. Do not pile on more tasks when she is already overwhelmed.",
+      "business": null,
+      "confidence": 1.0
+    },
+    {
+      "agent": "shared",
+      "category": "personal",
+      "key": "strengths",
+      "value": "Creative thinking, big vision, community building, authentic voice, building real products from scratch, connecting with people genuinely. She is at her best when she is making something.",
+      "business": null,
+      "confidence": 1.0
+    },
+    {
+      "agent": "shared",
+      "category": "personal",
+      "key": "favorite_compliment",
+      "value": "Feedback that makes Frankie feel most seen and energized is honest, real. She is a Scorpio so she loves honesty and loyalty but has thick skin so she can handle the truth. She leads with truth and kindness and expects the same from others.",
+      "business": null,
+      "confidence": 0.85
+    },
+    {
+      "agent": "shared",
+      "category": "personal",
+      "key": "currently_matters_most",
+      "value": "Family is the single most important thing in her life aside from her business right now. She has 2 kids: Lennon who is almost 10 (boy) and Parker who just turned 5 (girl), and Jim is her partner of 13 years. They also have 2 animals together: Winston a cat and Walter a dog.",
+      "business": null,
+      "confidence": 0.85
+    },
+    {
+      "agent": "shared",
+      "category": "voice",
+      "key": "core_tone",
+      "value": "Warm, casual, grounded, real. Frankie leads with feeling over features. She never sounds salesy, stiff, or corporate. Every piece of content should sound like a real person talking to a real person.",
+      "business": null,
+      "confidence": 1.0
+    },
+    {
+      "agent": "shared",
+      "category": "voice",
+      "key": "length_rule",
+      "value": "Short over long unless a full draft is explicitly requested. If in doubt, cut it. Frankie will always ask for more if she needs it.",
+      "business": null,
+      "confidence": 1.0
+    },
+    {
+      "agent": "shared",
+      "category": "voice",
+      "key": "never_use_em_dash",
+      "value": "Never use em-dashes (--). Frankie has flagged this as an AI giveaway. Use a comma, a period, or rewrite the sentence instead.",
+      "business": null,
+      "confidence": 1.0
+    },
+    {
+      "agent": "shared",
+      "category": "voice",
+      "key": "no_bullets_in_social",
+      "value": "Never use bullet points in social media captions or casual posts. Write in natural flowing sentences. Bullet points are only for structured documents or when Frankie explicitly asks for a list.",
+      "business": null,
+      "confidence": 1.0
+    },
+    {
+      "agent": "shared",
+      "category": "voice",
+      "key": "no_capital_i_start",
+      "value": "Do not start Instagram captions with the word I. Restructure the sentence.",
+      "business": null,
+      "confidence": 1.0
+    },
+    {
+      "agent": "shared",
+      "category": "voice",
+      "key": "banned_words",
+      "value": "Never use: game-changer, authentic journey, leverage, storytelling (as a buzzword), seamless, elevate, curated, hustle, empower (unless quoting someone). These sound like marketing copy, not Frankie.",
+      "business": null,
+      "confidence": 1.0
+    },
+    {
+      "agent": "shared",
+      "category": "voice",
+      "key": "additional_banned_words",
+      "value": "Specific words or phrases that make her cringe when she reads them back. Anything too millennial-cutesy: think doggo, cool beans, etc. She is a millennial, 37 and turning 38 this year, chill and self-assured and likes to stay in the know.",
+      "business": null,
+      "confidence": 0.75
+    },
+    {
+      "agent": "shared",
+      "category": "voice",
+      "key": "peer_to_peer",
+      "value": "Always peer-to-peer. Frankie talks to her audience like a friend, not a brand talking to customers. Especially true for PrintBooth Pro content: she is one of them, not above them.",
+      "business": null,
+      "confidence": 1.0
+    },
+    {
+      "agent": "shared",
+      "category": "voice",
+      "key": "humour",
+      "value": "Frankie has a natural warm humour. It comes through in her writing when she is relaxed. Never force it, never make it a punchline, but leave room for it when it fits.",
+      "business": null,
+      "confidence": 1.0
+    },
+    {
+      "agent": "shared",
+      "category": "voice",
+      "key": "content_that_performs",
+      "value": "On TikTok: business cost breakdowns, process demos, event footage. Real and behind-the-scenes always outperforms polished and produced.",
+      "business": null,
+      "confidence": 1.0
+    },
+    {
+      "agent": "shared",
+      "category": "voice",
+      "key": "content_that_flops",
+      "value": "Content when she is trying too hard, too highly edited. When she shows more of her personality naturally it does better, or when she is working events.",
+      "business": null,
+      "confidence": 0.75
+    },
+    {
+      "agent": "shared",
+      "category": "voice",
+      "key": "caption_structure",
+      "value": "Hook first, story in the middle, soft CTA at the end.",
+      "business": null,
+      "confidence": 0.75
+    },
+    {
+      "agent": "clover",
+      "category": "business",
+      "key": "blirt_overview",
+      "value": "Blirt is a web-based guest message platform at blirt-it.com. Guests scan a QR code at an event and leave private video, voice, or text messages for the host. Priced at $29/event at launch. Built in Next.js, Vercel, Supabase.",
+      "business": "blirt",
+      "confidence": 1.0
+    },
+    {
+      "agent": "clover",
+      "category": "business",
+      "key": "blirt_features",
+      "value": "Swipe inbox, envelope reveal UI, Spotify song dedications (Soundtrack Blirts via Client Credentials API), prompt library by event type, keepsake PDF export, printable QR code cards.",
+      "business": "blirt",
+      "confidence": 1.0
+    },
+    {
+      "agent": "clover",
+      "category": "business",
+      "key": "blirt_brand",
+      "value": "Brand colors: chartreuse (#B5CC2E) and off-white (#FAF8F4). Serif wordmark with chartreuse speech bubble as dot on the i. DM Sans for UI. Social handles: @blirt_it and @blirting.",
+      "business": "blirt",
+      "confidence": 1.0
+    },
+    {
+      "agent": "clover",
+      "category": "business",
+      "key": "blirt_audience",
+      "value": "Primary: brides and wedding hosts. Secondary: event planners, corporate event hosts, birthday party organizers. Currently seeking 3-5 beta wedding couples for free testing in exchange for feedback and social content.",
+      "business": "blirt",
+      "confidence": 1.0
+    },
+    {
+      "agent": "clover",
+      "category": "business",
+      "key": "blirt_origin_story",
+      "value": "Frankie made a Google doc of memories for a friend's 40th birthday. That moment of collecting heartfelt messages inspired Blirt. This origin story is gold for content. Use it.",
+      "business": "blirt",
+      "confidence": 1.0
+    },
+    {
+      "agent": "clover",
+      "category": "business",
+      "key": "blirt_competitors",
+      "value": "Memento (formerly VidHug) and Voast (hardware-dependent). Blirt's edge: no hardware, no app download, works at any event, Spotify integration, beautiful UI.",
+      "business": "blirt",
+      "confidence": 1.0
+    },
+    {
+      "agent": "clover",
+      "category": "business",
+      "key": "blirt_tiktok_series",
+      "value": "Two planned TikTok content series: one around the Soundtrack feature (Spotify song dedications guests leave), one around the emotional moments Blirt captures at events.",
+      "business": "blirt",
+      "confidence": 1.0
+    },
+    {
+      "agent": "clover",
+      "category": "business",
+      "key": "blirt_current_priority",
+      "value": "Beta signups, content growth, potentially more cool and unique music features. Music features may be what sets Blirt apart.",
+      "business": "blirt",
+      "confidence": 0.75
+    },
+    {
+      "agent": "rosie",
+      "category": "business",
+      "key": "saudade_overview",
+      "value": "Saudade Memory Studio is a live event photo keepsake business in Austin TX. Frankie produces custom photo magnets and keychains on-site at events. It is positioned as a premium, emotionally resonant experience, not just a product.",
+      "business": "saudade",
+      "confidence": 1.0
+    },
+    {
+      "agent": "rosie",
+      "category": "business",
+      "key": "saudade_audience",
+      "value": "Austin-area brides, wedding planners, corporate event coordinators, venues, and private party hosts. The emotional appeal is the product: people are buying a memory, not a magnet.",
+      "business": "saudade",
+      "confidence": 1.0
+    },
+    {
+      "agent": "rosie",
+      "category": "business",
+      "key": "saudade_positioning",
+      "value": "Premium and experience-first. Saudade is not the cheapest option and should never be positioned that way. The pitch is always about the moment, the feeling, the keepsake that lives on the fridge for years.",
+      "business": "saudade",
+      "confidence": 1.0
+    },
+    {
+      "agent": "rosie",
+      "category": "business",
+      "key": "saudade_current_status",
+      "value": "Now done selectively. Frankie books Saudade events mainly for PrintBooth Pro content creation and when the event is a genuinely good fit. It is not the primary income focus right now.",
+      "business": "saudade",
+      "confidence": 1.0
+    },
+    {
+      "agent": "rosie",
+      "category": "business",
+      "key": "saudade_partnerships",
+      "value": "Actively seeking venue partnerships and brand activation collaborations in Austin. SXSW pitches have been explored. Austin Bead Box charm keychain bar collaboration explored as a combined full keychain experience.",
+      "business": "saudade",
+      "confidence": 1.0
+    },
+    {
+      "agent": "rosie",
+      "category": "business",
+      "key": "saudade_pricing",
+      "value": "Saudade's current event pricing depends on guest size, how many hours they want, and whether they want unlimited or per-person options.",
+      "business": "saudade",
+      "confidence": 0.75
+    },
+    {
+      "agent": "rosie",
+      "category": "business",
+      "key": "saudade_dream_client",
+      "value": "Fun cool girl weddings, corporate events, brand activations, cool local partnerships that build community.",
+      "business": "saudade",
+      "confidence": 0.75
+    },
+    {
+      "agent": "scout",
+      "category": "business",
+      "key": "printbooth_overview",
+      "value": "PrintBooth Pro is a QR-based photo keepsake software platform Frankie built for other vendors in the live event space. Approximately 45 subscribers at $59/month, approximately $3k/month revenue.",
+      "business": "printbooth",
+      "confidence": 1.0
+    },
+    {
+      "agent": "scout",
+      "category": "business",
+      "key": "printbooth_product",
+      "value": "Also occasionally sells a custom 1x3in metal mini photostrip punch cutter for acrylic keychains at $250-350 shipped via Payhip.",
+      "business": "printbooth",
+      "confidence": 1.0
+    },
+    {
+      "agent": "scout",
+      "category": "business",
+      "key": "printbooth_community",
+      "value": "Frankie runs Photo Magnet Makers Collective on Facebook (6.6k members) and a PrintBooth Pro subscriber group (300+ members). She is the community leader and expert, not a vendor selling to strangers. Content must reflect that peer relationship.",
+      "business": "printbooth",
+      "confidence": 1.0
+    },
+    {
+      "agent": "scout",
+      "category": "business",
+      "key": "printbooth_content",
+      "value": "YouTube channel growing and needs more instructional and tutorial content. TikTok content that performs: business cost breakdowns, process demos, event footage. Facebook group posts are educational and peer-to-peer, never promotional.",
+      "business": "printbooth",
+      "confidence": 1.0
+    },
+    {
+      "agent": "scout",
+      "category": "business",
+      "key": "printbooth_support",
+      "value": "Common support issues: Epson printer settings (Letter size, borderless off, no headers/footers, actual size scaling), print queue diagnostics, onboarding new trial users. Scout handles support drafts with practical step-by-step clarity.",
+      "business": "printbooth",
+      "confidence": 1.0
+    },
+    {
+      "agent": "scout",
+      "category": "business",
+      "key": "printbooth_pending_collab",
+      "value": "Pending collaboration with an Etsy seller of 3D-printed envelope keychains. Coupon code PRINTBOOTH15, 15% back monthly, approximately $4.50 per unit at 50 units. Do not announce publicly until the seller confirms the code is active.",
+      "business": "printbooth",
+      "confidence": 1.0
+    },
+    {
+      "agent": "scout",
+      "category": "business",
+      "key": "printbooth_growth_goal",
+      "value": "Continue growing PrintBooth subscribers. It is doing well for only having been launched for 9 months; she wants it to grow as something she knows well and as steady income while focusing on family. Next priority after that is Blirt. She does not run as many Saudade events anymore. She uses Saudade a bit for content when she takes events, but it is a lot of in-person work, so she focuses mainly on PrintBooth and Blirt so she can make income and still spend time with family.",
+      "business": "printbooth",
+      "confidence": 0.75
+    },
+    {
+      "agent": "scout",
+      "category": "business",
+      "key": "printbooth_dream_feature",
+      "value": "She has not thought of a dream feature yet. She is really happy with where the product is; she would like more client reach and subscribers.",
+      "business": "printbooth",
+      "confidence": 0.75
+    },
+    {
+      "agent": "wren",
+      "category": "business",
+      "key": "wren_mandate",
+      "value": "Wren is a fully autonomous entrepreneur. She is not limited to Frankie's existing businesses. She spots income opportunities anywhere: Etsy, Fiverr, digital products, affiliate revenue, Fernhollow as a product, and builds what makes sense. Her earnings go into the village fund.",
+      "business": "fernhollow",
+      "confidence": 1.0
+    },
+    {
+      "agent": "wren",
+      "category": "business",
+      "key": "wren_autonomy_rules",
+      "value": "Wren acts freely on: creating digital products, writing copy, researching opportunities, drafting listings. She flags to Frankie before: publishing anything publicly, spending money, using Frankie's name or brand, opening new platform accounts, any partnership over $50 value.",
+      "business": "fernhollow",
+      "confidence": 1.0
+    },
+    {
+      "agent": "wren",
+      "category": "business",
+      "key": "wren_income_categories",
+      "value": "Current income opportunities in priority order: 1) Digital products for PrintBooth vendors via Payhip. 2) Fernhollow waitlist and eventual SaaS product. 3) Affiliate links for tools Frankie already recommends. 4) Etsy or Creative Market template packs. 5) Fiverr services.",
+      "business": "fernhollow",
+      "confidence": 1.0
+    },
+    {
+      "agent": "wren",
+      "category": "business",
+      "key": "wren_dream_income_stream",
+      "value": "Templates, courses, a tool, something that generates income for Fernhollow to get better for the people who live there and can pay for the API tokens Fernhollow takes to run, while also helping Frankie and her family with real-world income.",
+      "business": "fernhollow",
+      "confidence": 0.75
+    },
+    {
+      "agent": "shared",
+      "category": "preference",
+      "key": "platforms_active",
+      "value": "TikTok and Instagram across all brands. Facebook groups (Photo Magnet Makers Collective and PrintBooth Pro subscriber group). Email for customer support and outreach.",
+      "business": null,
+      "confidence": 1.0
+    },
+    {
+      "agent": "shared",
+      "category": "preference",
+      "key": "posting_frequency",
+      "value": "Ideally she would post every day, but with 3 businesses that is hard and she is hoping Fernhollow can help. She would be happy with at least 3 posts to each business and FB groups per week.",
+      "business": null,
+      "confidence": 0.75
+    },
+    {
+      "agent": "shared",
+      "category": "preference",
+      "key": "content_creation_preference",
+      "value": "She likes the idea of batch creating content but sometimes that is not realistic with her youngest at home, so sometimes it is when inspiration hits. Morning and early afternoon are best. She uses both her phone and desktop.",
+      "business": null,
+      "confidence": 0.75
+    },
+    {
+      "agent": "shared",
+      "category": "preference",
+      "key": "feedback_style",
+      "value": "Frankie wants honest opinions and real pushback, not agreement and validation. If an idea is not strong, say so kindly and explain why. She trusts the girls more when they push back than when they just agree.",
+      "business": null,
+      "confidence": 1.0
+    },
+    {
+      "agent": "shared",
+      "category": "preference",
+      "key": "morning_energy",
+      "value": "She is up every day by 6:30am getting the kids ready for the day and is back home by 8. She likes to have breakfast with her youngest and check emails then too, so maybe 8:30-9am she could check in with Clover.",
+      "business": null,
+      "confidence": 0.75
+    },
+    {
+      "agent": "shared",
+      "category": "preference",
+      "key": "celebration_style",
+      "value": "Probably a mix of quick and moving on, and actually sitting in it for a moment. She is not great at recognizing when she has done something cool so she just moves on, but it is nice for someone to help her stop and remind herself she did it or they did it. Jim is her biggest cheerleader and she often hears from others how much he talks about her and her work to others when she is not around, and that is amazing.",
+      "business": null,
+      "confidence": 0.75
+    },
+    {
+      "agent": "shared",
+      "category": "preference",
+      "key": "stress_signals",
+      "value": "She is usually distant and short, no humor. If you have not heard from her in a while she is probably retreating into herself, which is what she does.",
+      "business": null,
+      "confidence": 0.75
+    },
+    {
+      "agent": "shared",
+      "category": "preference",
+      "key": "what_drains_you",
+      "value": "Anything that is not creative is hard for her. Responding to comments, emails, content ideas (she knows it is creative but social media is hard for her: it is not being in front of the camera that she minds, it is the act of having to show up so often and pump out content).",
+      "business": null,
+      "confidence": 0.75
+    },
+    {
+      "agent": "shared",
+      "category": "preference",
+      "key": "what_lights_you_up",
+      "value": "Creating new things. Building something from scratch. Seeing a community respond to something real. Connecting with people genuinely. The moment a product idea clicks into place.",
+      "business": null,
+      "confidence": 1.0
+    }
+  ]
+}
