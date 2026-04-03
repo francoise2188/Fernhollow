@@ -101,6 +101,33 @@ export async function fetchRelevantMemories(
   return scored;
 }
 
+/** Top memories across all four girls for village square (cap for prompt size). */
+export async function fetchMemoriesForVillageSquare(
+  limit: number,
+): Promise<
+  Awaited<ReturnType<typeof fetchRelevantMemories>>
+> {
+  const per = Math.max(2, Math.ceil(limit / 4));
+  const agents: FernhollowAgent[] = ["clover", "rosie", "scout", "wren"];
+  const batches = await Promise.all(
+    agents.map((agent) =>
+      fetchRelevantMemories({ agent, limit: per }),
+    ),
+  );
+  const merged = batches.flat();
+  const seen = new Set<string>();
+  const deduped = merged.filter((row) => {
+    if (seen.has(row.id)) return false;
+    seen.add(row.id);
+    return true;
+  });
+  deduped.sort(
+    (a, b) =>
+      new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
+  );
+  return deduped.slice(0, limit);
+}
+
 export interface UpsertMemoryParams {
   agent: FernhollowAgent;
   category: MemoryCategory;
@@ -130,6 +157,26 @@ export async function insertMemory(
 
   if (error) throw error;
   return { id: data.id as string };
+}
+
+/** If the message looks like a recurring habit, save a light pattern memory (Stage 3). */
+export async function maybeSavePatternFromUserMessage(message: string): Promise<void> {
+  const m = message.trim();
+  if (m.length < 12 || m.length > 2000) return;
+  if (!/\b(always|every sunday|every week|usually|on sundays)\b/i.test(m)) {
+    return;
+  }
+  try {
+    await insertMemory({
+      agent: "shared",
+      category: "pattern",
+      key: "recurring_habit",
+      value: m.slice(0, 600),
+      confidence: 0.55,
+    });
+  } catch {
+    /* ignore DB noise */
+  }
 }
 
 /** Format memories for injection into a system prompt. */
