@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import {
   FERNHOLLOW_AUTH_COOKIE,
   FERNHOLLOW_AUTH_VALUE,
-} from "@/lib/auth-constants";
+} from "./lib/auth-constants";
 
 function isPublicPath(pathname: string): boolean {
   if (pathname.startsWith("/api/cron/")) return true;
