@@ -154,6 +154,52 @@ function ChatWindowInner({
             <span className="whitespace-pre-wrap">{m.content}</span>
           </div>
         ))}
+        {loading && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.4rem",
+              padding: "0.5rem 0",
+            }}
+          >
+            <span
+              style={{
+                fontSize: "1.1rem",
+                display: "inline-block",
+                animation: "fernhollow-bounce 1.2s ease-in-out infinite",
+              }}
+            >
+              🍄
+            </span>
+            <span
+              style={{
+                fontSize: "1.1rem",
+                display: "inline-block",
+                animation: "fernhollow-bounce 1.2s ease-in-out infinite",
+                animationDelay: "0.2s",
+              }}
+            >
+              🌿
+            </span>
+            <span
+              style={{
+                fontSize: "1.1rem",
+                display: "inline-block",
+                animation: "fernhollow-bounce 1.2s ease-in-out infinite",
+                animationDelay: "0.4s",
+              }}
+            >
+              🍄
+            </span>
+            <style>{`
+              @keyframes fernhollow-bounce {
+                0%, 100% { transform: translateY(0); opacity: 0.5; }
+                50% { transform: translateY(-5px); opacity: 1; }
+              }
+            `}</style>
+          </div>
+        )}
       </div>
       {error ? (
         <p
