@@ -120,29 +120,45 @@ export async function sendChimesForBriefing(params: {
   sourceContentId: string;
 }): Promise<void> {
   const { fromAgent, briefingContent, sourceContentId } = params;
+  console.log(
+    `[chimes] routing for ${fromAgent}, content length: ${briefingContent.length}`,
+  );
 
   const recipients = routeChime(fromAgent, briefingContent);
-  if (recipients.length === 0) return;
+  console.log(`[chimes] recipients for ${fromAgent}:`, recipients);
+
+  if (recipients.length === 0) {
+    console.log(`[chimes] no recipients found for ${fromAgent}`);
+    return;
+  }
 
   const supabase = getSupabaseAdmin();
 
   for (const toAgent of recipients) {
     try {
+      console.log(`[chimes] generating ${fromAgent} → ${toAgent}`);
       const message = await generateChimeResponse(
         toAgent,
         fromAgent,
         briefingContent,
       );
+      console.log(`[chimes] generated message: ${message.slice(0, 50)}`);
 
-      await supabase.from("fernhollow_chimes").insert({
+      const { error: insertError } = await supabase.from("fernhollow_chimes").insert({
         from_agent: fromAgent,
         to_agent: toAgent,
         message,
         context_type: "research",
         source_content_id: sourceContentId,
       });
+
+      if (insertError) {
+        console.error(`[chimes] insert error:`, insertError);
+      } else {
+        console.log(`[chimes] saved ${fromAgent} → ${toAgent}`);
+      }
     } catch (e) {
-      console.error(`Chime failed ${fromAgent} → ${toAgent}:`, e);
+      console.error(`[chimes] failed ${fromAgent} → ${toAgent}:`, e);
     }
   }
 }
