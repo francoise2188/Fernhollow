@@ -74,6 +74,7 @@ export const config = {
     "/assets/fernhollow/audio/river.mp3",
     "/assets/fernhollow/audio/fireplace.mp3",
     // Skip middleware for most `public/` assets; see note above for mp3.
-    "/((?!assets|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp3)$).*)",
+    // Skip /api/cron/* so those routes never hit Edge middleware (avoids __dirname / CJS issues in the middleware bundle).
+    "/((?!api/cron|assets|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp3)$).*)",
   ],
 };
