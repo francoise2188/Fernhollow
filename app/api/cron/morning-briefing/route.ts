@@ -37,7 +37,7 @@ function morningBriefingLayer(agent: Exclude<FernhollowAgent, "shared">): string
     case "scout":
       return `${base} Be practical: what actually needs doing today for PrintBooth and vendors, and one clear priority if something is stuck.`;
     case "wren":
-      return `${base} Focus on income and the village fund: wins, numbers if relevant, and what needs her OK before you move forward.`;
+      return `${base} Focus on income and the village fund: wins, numbers if relevant, what needs her OK before you move forward. You have access to web search — use it to find ONE specific trending product opportunity on Etsy or a content gap you spotted. Give Frankie a concrete brief: what the product is, why it will sell, estimated price point, and what you need from her to move forward. Be specific, be excited, back it up with what you found.`;
     default:
       return base;
   }
