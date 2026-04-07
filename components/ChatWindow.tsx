@@ -111,7 +111,7 @@ function ChatWindowInner({
 
   const outer =
     variant === "dialogue"
-      ? "flex min-h-[320px] flex-col rounded-xl border border-stone-600/80 bg-stone-950/90"
+      ? "flex min-h-[320px] flex-col rounded-xl border-2 border-amber-900/20 bg-amber-50/40"
       : "flex min-h-[420px] flex-col rounded-2xl border border-stone-200 bg-white/90 dark:border-stone-700 dark:bg-stone-900/90";
 
   return (
@@ -119,29 +119,35 @@ function ChatWindowInner({
       <div
         className={
           variant === "dialogue"
-            ? "max-h-[min(50vh,420px)] flex-1 space-y-3 overflow-y-auto p-3 text-sm leading-relaxed text-stone-100"
+            ? "max-h-[min(50vh,420px)] flex-1 space-y-3 overflow-y-auto p-3 text-sm leading-relaxed"
             : "max-h-[min(60vh,520px)] flex-1 space-y-3 overflow-y-auto p-4 text-sm leading-relaxed"
         }
       >
         {loadingHistory ? (
-          <p
-            className={
-              variant === "dialogue" ? "text-stone-400" : "text-stone-500"
-            }
-          >
+          <p className={variant === "dialogue" ? "text-stone-500" : "text-stone-500"}>
             Loading your conversation…
+          </p>
+        ) : null}
+        {!loadingHistory && messages.length === 0 && variant === "dialogue" ? (
+          <p className="text-center text-sm text-stone-400 mt-8 italic">
+            🌿 Say hello to start the conversation…
           </p>
         ) : null}
         {messages.map((m, i) => (
           <div
             key={`${m.role}-${i}`}
+            style={
+              m.role === "user" && variant === "dialogue"
+                ? { backgroundColor: "#d4e8c2" }
+                : {}
+            }
             className={
               m.role === "user"
                 ? variant === "dialogue"
-                  ? "ml-8 rounded-2xl rounded-br-sm bg-emerald-900/50 px-4 py-3 text-stone-50"
+                  ? "ml-8 rounded-2xl rounded-br-sm px-4 py-3 text-stone-700 border border-green-200/50"
                   : "ml-8 rounded-2xl rounded-br-sm bg-emerald-100 px-4 py-3 text-stone-900 dark:bg-emerald-900/40 dark:text-stone-50"
                 : variant === "dialogue"
-                  ? "mr-8 rounded-2xl rounded-bl-sm bg-stone-800 px-4 py-3 text-stone-100"
+                  ? "mr-8 rounded-2xl rounded-bl-sm bg-amber-50 px-4 py-3 text-stone-700 border border-amber-200/60"
                   : "mr-8 rounded-2xl rounded-bl-sm bg-stone-100 px-4 py-3 text-stone-800 dark:bg-stone-800 dark:text-stone-100"
             }
           >
@@ -153,7 +159,7 @@ function ChatWindowInner({
         <p
           className={
             variant === "dialogue"
-              ? "border-t border-stone-600/80 px-4 py-2 text-sm text-rose-300"
+              ? "border-t border-amber-900/15 px-4 py-2 text-sm text-rose-600"
               : "border-t border-stone-200 px-4 py-2 text-sm text-rose-600 dark:border-stone-700 dark:text-rose-400"
           }
         >
@@ -163,7 +169,7 @@ function ChatWindowInner({
       <div
         className={
           variant === "dialogue"
-            ? "flex gap-2 border-t border-stone-600/80 p-3"
+            ? "flex gap-2 border-t border-amber-900/15 p-3"
             : "flex gap-2 border-t border-stone-200 p-3 dark:border-stone-700"
         }
       >
@@ -180,7 +186,7 @@ function ChatWindowInner({
           placeholder="Say something…"
           className={
             variant === "dialogue"
-              ? "min-h-[44px] flex-1 resize-none rounded-lg border border-stone-600 bg-stone-900 px-3 py-2 text-stone-100 placeholder:text-stone-500 focus:border-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-600/30"
+              ? "min-h-[44px] flex-1 resize-none rounded-xl border border-amber-900/20 bg-white/80 px-3 py-2 text-stone-800 placeholder:text-stone-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-[Nunito,sans-serif]"
               : "min-h-[44px] flex-1 resize-none rounded-xl border border-stone-200 bg-white px-3 py-2 text-stone-900 placeholder:text-stone-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-stone-600 dark:bg-stone-950 dark:text-stone-50"
           }
           disabled={loading || !sessionId}
@@ -189,7 +195,12 @@ function ChatWindowInner({
           type="button"
           onClick={() => void send()}
           disabled={loading || !sessionId || !input.trim()}
-          className="self-end rounded-xl bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
+          style={variant === "dialogue" ? { fontFamily: 'Nunito, sans-serif' } : {}}
+          className={
+            variant === "dialogue"
+              ? "self-end rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
+              : "self-end rounded-xl bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
+          }
         >
           {loading ? "…" : "Send"}
         </button>

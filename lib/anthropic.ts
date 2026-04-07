@@ -65,3 +65,42 @@ export async function completeConversation(input: {
     throw new Error(base);
   }
 }
+
+export async function completeWithSearch(input: {
+  system: string;
+  messages: ChatTurn[];
+  maxTokens?: number;
+}): Promise<string> {
+  const key = normalizeApiKey(process.env.ANTHROPIC_API_KEY ?? "");
+  if (!key) throw new Error("Missing ANTHROPIC_API_KEY");
+
+  const model = (process.env.ANTHROPIC_MODEL ?? DEFAULT_MODEL)
+    .replace(/\r/g, "")
+    .trim();
+
+  const client = new Anthropic({ apiKey: key });
+
+  const response = await client.messages.create({
+    model,
+    max_tokens: input.maxTokens ?? 4096,
+    system: input.system,
+    messages: input.messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    })),
+    tools: [
+      {
+        type: "web_search_20250305",
+        name: "web_search",
+      } as unknown as Anthropic.Tool,
+    ],
+  });
+
+  const text = response.content
+    .filter((block) => block.type === "text")
+    .map((block) => (block as Anthropic.TextBlock).text)
+    .join("\n\n");
+
+  if (!text) throw new Error("No text in Anthropic response");
+  return text;
+}

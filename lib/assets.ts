@@ -15,12 +15,6 @@ export function fernhollowAssetPath(...segments: string[]): string {
 
 /** Character and animal sprites (flat files in characters/). */
 export const CHARACTERS = {
-  rosie: fernhollowAssetPath(
-    "characters",
-    "strawby girl",
-    ".png files",
-    "rosie-sprite.png.png",
-  ),
   pipBird: fernhollowAssetPath("characters", "pip-bird.png"),
   figBunny: fernhollowAssetPath("characters", "fig-bunny.png.png"),
   rueFox: fernhollowAssetPath("characters", "rue-fox.png.png"),
@@ -45,16 +39,17 @@ export const CHARACTERS = {
  * `list.txt`: **10** clothes colour columns, **14** hair columns (side‑by‑side variants). Crop width = `fileWidth / colorCount` for the first variant column.
  */
 
-/** Try lowercase → PascalCase (common export) → same-sized sheet. Linux URLs are case-sensitive. */
+/**
+ * Retry chains: canonical lowercase names (see `public/.../cozy-people/`).
+ * `next.config.ts` rewrites `Dress.png` / `Ponytail.png` → `dress.png` / `ponytail.png` for stale bundles.
+ */
 const CLOVER_CLOTHES_URL_CHAIN = [
   fernhollowAssetPath("cozy-people", "clothes", "dress.png"),
-  fernhollowAssetPath("cozy-people", "clothes", "Dress.png"),
   fernhollowAssetPath("cozy-people", "clothes", "overalls.png"),
 ] as const;
 
 const SCOUT_HAIR_URL_CHAIN = [
   fernhollowAssetPath("cozy-people", "hair", "ponytail.png"),
-  fernhollowAssetPath("cozy-people", "hair", "Ponytail.png"),
   fernhollowAssetPath("cozy-people", "hair", "extra_long.png"),
 ] as const;
 
@@ -131,6 +126,65 @@ export const COZY_HOLLOW = {
     "Files",
     "Water grass tileset v2.png",
   ),
+  animalSprites: fernhollowAssetPath(
+    "Cozy Hollow V1.3",
+    "Files",
+    "Animal Sprites.png",
+  ),
+} as const;
+
+/**
+ * Serene Village pack — copy PNGs into `public/assets/fernhollow/Serene_Village_revamped_v1.9/`
+ * (flat names). If your zip only has a `SERENE_VILLAGE_REVAMPED/` subfolder, either move the PNGs up
+ * one level or rely on `next.config.ts` rewrites from the nested path to these files.
+ */
+export const SERENE_VILLAGE = {
+  housesTileset: fernhollowAssetPath(
+    "Serene_Village_revamped_v1.9",
+    "Houses_TILESET_B-C-D-E.png",
+  ),
+  tileset16: fernhollowAssetPath(
+    "Serene_Village_revamped_v1.9",
+    "Serene_Village_16x16.png",
+  ),
+} as const;
+
+/**
+ * Extra world tilesets referenced by `fernhollow-map.json` (Tiled `name` → load key must match).
+ */
+export const MAP_EXTRA_TILESETS = {
+  tileset: fernhollowAssetPath("Tiny garden_free pack", "tileset.png"),
+  objects: fernhollowAssetPath("Tiny garden_free pack", "objects.png"),
+  cozytown_tileset_fulll: fernhollowAssetPath(
+    "cozy-series-town-tileset-v1.0",
+    "CozyTown_AssetPack",
+    "Tileset",
+    "cozytown_tileset_fulll.png",
+  ),
+} as const;
+
+/**
+ * Cozy People merged sheets used as Tiled tilesets (names must match the map’s tileset `name`).
+ * Paths align with `fernhollow-map-2/*.tsx` (32×32 tile grid in Tiled over each PNG).
+ */
+export const COZY_PEOPLE_TILED_TILESETS = {
+  char_all: fernhollowAssetPath("cozy-people", "characters", "char_all.png"),
+  wavy: fernhollowAssetPath("cozy-people", "hair", "wavy.png"),
+  dress: fernhollowAssetPath("cozy-people", "clothes", "dress.png"),
+  extra_long: fernhollowAssetPath("cozy-people", "hair", "extra_long.png"),
+  extra_long_skirt: fernhollowAssetPath(
+    "cozy-people",
+    "hair",
+    "extra_long_skirt.png",
+  ),
+  spacebuns: fernhollowAssetPath("cozy-people", "hair", "spacebuns.png"),
+  floral: fernhollowAssetPath("cozy-people", "clothes", "floral.png"),
+  pants: fernhollowAssetPath("cozy-people", "clothes", "pants.png"),
+  shoes: fernhollowAssetPath("cozy-people", "clothes", "shoes.png"),
+  eyes: fernhollowAssetPath("cozy-people", "eyes", "eyes.png"),
+  blush_all: fernhollowAssetPath("cozy-people", "eyes", "blush_all.png"),
+  /** Tiled tileset name is `lipstick ` (trailing space). File: `lipstick .png`. */
+  "lipstick ": fernhollowAssetPath("cozy-people", "eyes", "lipstick .png"),
 } as const;
 
 /**
@@ -142,8 +196,14 @@ export const PHASER_COZY = {
   /** Visual scale of repeated tiles (2 = larger pixels on screen). */
   tileScale: 2,
   grassFrame: 0,
+  /** Main dirt path (vertical stem). */
   pathFrame: 5,
+  /** Cross-path / branch — contrasting frame on the same ground sheet. */
+  pathFrameAccent: 12,
   waterFrame: 0,
+  /** Shore / water edge decoration from water–grass tileset (banks). */
+  waterBankFrameMin: 1,
+  waterBankFrameMax: 7,
   /** Decorative sprites picked from random frame ranges (avoid empty tiles). */
   meadowDecorFrameMin: 8,
   meadowDecorFrameMax: 80,
@@ -155,12 +215,15 @@ export const UI = {
   nameplate: fernhollowAssetPath("ui", "nameplate.png"),
 } as const;
 
-/** Ambient and music (Howler). */
+/**
+ * Ambient and music (Howler). Filenames must match `public/assets/fernhollow/audio/`.
+ * (Avoid double extensions like `birdsong.mp3.wav` — use one extension per format.)
+ */
 export const AUDIO = {
-  birdsong: fernhollowAssetPath("audio", "birdsong.mp3"),
-  river: fernhollowAssetPath("audio", "river.mp3"),
-  forestAmbience: fernhollowAssetPath("audio", "forest-ambience.mp3"),
-  fireplace: fernhollowAssetPath("audio", "fireplace.mp3"),
+  birdsong: fernhollowAssetPath("audio", "birdsong.wav"),
+  river: fernhollowAssetPath("audio", "river.wav"),
+  forestAmbience: fernhollowAssetPath("audio", "forest-ambience.wav"),
+  fireplace: fernhollowAssetPath("audio", "fireplace.m4a"),
   backgroundMusic: fernhollowAssetPath("audio", "background-music.mp3"),
 } as const;
 
@@ -174,15 +237,3 @@ export const FERNHOLLOW_HOUSE_CLICK_EVENT = FERNHOLLOW_OPEN_CHAT_EVENT;
 export const FERNHOLLOW_AUDIO_LOCATION_EVENT = "fernhollow:audio-location" as const;
 
 export type FernhollowHouseClickDetail = { slug: string };
-
-/**
- * Optional: if rosie-sprite.png is a horizontal strip, set frame size and use a spritesheet in Phaser.
- * Flat single-image sprites use load.image instead (see FernhollowGame).
- */
-export const PHASER = {
-  rosieSpritesheet: {
-    frameWidth: 32,
-    frameHeight: 32,
-    frameCount: 4,
-  },
-} as const;

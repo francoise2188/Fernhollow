@@ -3,10 +3,10 @@ import { AUDIO } from "@/lib/assets";
 import type { LocationSlug } from "@/lib/locations";
 
 /** Forest ambience and background music (per spec). */
-const VOL_FOREST = 0.2;
-const VOL_BGM = 0.2;
+const VOL_FOREST = 0.28;
+const VOL_BGM = 0.28;
 /** Birdsong loop. */
-const VOL_BIRD = 0.15;
+const VOL_BIRD = 0.22;
 /** River and fireplace when active. */
 const VOL_RIVER = 0.25;
 const VOL_FIRE = 0.25;
@@ -34,6 +34,8 @@ type Howls = {
 let howls: Howls | null = null;
 let ambientStarted = false;
 let unlockListenersAttached = false;
+/** Window capture listener — removed once audio unlocks (any path). */
+let windowPointerUnlockHandler: ((e: PointerEvent) => void) | null = null;
 let userMuted = false;
 let riverSceneActive = false;
 let fireplaceSceneActive = false;
@@ -84,9 +86,20 @@ async function createHowls(): Promise<Howls> {
   };
 }
 
+function detachWindowUnlockListener(): void {
+  if (!windowPointerUnlockHandler) return;
+  window.removeEventListener(
+    "pointerdown",
+    windowPointerUnlockHandler as EventListener,
+    { capture: true },
+  );
+  windowPointerUnlockHandler = null;
+}
+
 async function unlockAndStartAmbient(): Promise<void> {
   if (typeof window === "undefined" || ambientStarted) return;
   ambientStarted = true;
+  detachWindowUnlockListener();
 
   const Howler = await getHowler();
   howls = await createHowls();
@@ -99,20 +112,36 @@ async function unlockAndStartAmbient(): Promise<void> {
   applySceneLayers(lastSlug);
 }
 
+/** Await after first user gesture so Howler can start (browsers block audio until then). */
+export async function unlockAmbientAudioIfNeeded(): Promise<void> {
+  await unlockAndStartAmbient();
+}
+
+export function isAmbientAudioStarted(): boolean {
+  return ambientStarted;
+}
+
 /**
- * Attach one-time listeners so the first click or touch unlocks audio (browser policy).
- * Safe to call multiple times (only attaches once).
+ * First pointerdown outside `[data-fernhollow-audio-control]` unlocks audio.
+ * The mute button is marked with that attribute so its first click can unlock **without**
+ * immediately toggling mute (capture-phase document listeners used to run before the button
+ * and left Howler unmuted for one tick, then the button flipped mute on — silent village).
  */
 export function attachFernhollowAudioUnlock(): void {
   if (typeof window === "undefined" || unlockListenersAttached) return;
   unlockListenersAttached = true;
 
-  const onInteract = () => {
+  windowPointerUnlockHandler = (e: PointerEvent) => {
+    const el = e.target as HTMLElement | null;
+    if (el?.closest?.("[data-fernhollow-audio-control]")) return;
     void unlockAndStartAmbient();
   };
 
-  document.addEventListener("click", onInteract, { capture: true, once: true });
-  document.addEventListener("touchend", onInteract, { capture: true, once: true });
+  window.addEventListener(
+    "pointerdown",
+    windowPointerUnlockHandler as EventListener,
+    { capture: true },
+  );
 }
 
 function applyRiver(active: boolean): void {

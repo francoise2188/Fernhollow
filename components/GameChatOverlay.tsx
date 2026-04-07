@@ -4,6 +4,7 @@ import { useCallback, useEffect } from "react";
 import { ChatWindow } from "@/components/ChatWindow";
 import { GardenBoardClient } from "@/components/GardenBoardClient";
 import { TreasuryDashboard } from "@/components/TreasuryDashboard";
+import { VillageSquare } from "@/components/VillageSquare";
 import { LOCATIONS, type LocationSlug } from "@/lib/locations";
 
 type Props = {
@@ -27,58 +28,174 @@ export function GameChatOverlay({ slug, onClose }: Props) {
   }, [onKey]);
 
   return (
-    <div
-      className="fixed inset-0 z-[55] flex items-end justify-center pb-6 pt-16 sm:pb-10"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="fh-dialogue-title"
-    >
-      <button
-        type="button"
-        className="absolute inset-0 cursor-default bg-black/55 backdrop-blur-[2px]"
-        aria-label="Close and return to the village"
-        onClick={onClose}
-      />
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap');
+
+        .fh-overlay-wrap {
+          font-family: 'Nunito', sans-serif;
+        }
+
+        .fh-window {
+          background: rgba(240, 235, 220, 0.98);
+          border-radius: 20px;
+          box-shadow:
+            0 0 0 3px rgba(139,109,56,0.45),
+            0 0 0 7px rgba(139,109,56,0.12),
+            0 24px 60px rgba(0,0,0,0.55);
+          overflow: hidden;
+          position: relative;
+        }
+
+        .fh-window::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+          pointer-events: none;
+          z-index: 0;
+        }
+
+        .fh-header {
+          position: relative;
+          z-index: 1;
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 0.75rem;
+          padding: 1rem 1.25rem 0.9rem;
+          border-bottom: 2px solid rgba(139,109,56,0.2);
+          background: linear-gradient(to bottom, rgba(86,130,60,0.08), transparent);
+        }
+
+        .fh-header-left {
+          display: flex;
+          flex-direction: column;
+          gap: 0.15rem;
+        }
+
+        .fh-eyebrow {
+          font-size: 0.6rem;
+          font-weight: 800;
+          letter-spacing: 0.25em;
+          text-transform: uppercase;
+          color: #7a5c2e;
+          display: flex;
+          align-items: center;
+          gap: 0.35rem;
+        }
+
+        .fh-title {
+          font-size: 1.2rem;
+          font-weight: 800;
+          color: #2d4a1e;
+          margin: 0;
+          line-height: 1.2;
+        }
+
+        .fh-sublabel {
+          font-size: 0.78rem;
+          color: #7a8c6a;
+          font-weight: 500;
+        }
+
+        .fh-close-btn {
+          flex-shrink: 0;
+          padding: 0.4rem 0.9rem;
+          border-radius: 20px;
+          border: 2px solid rgba(139,109,56,0.35);
+          background: rgba(255,255,255,0.6);
+          font-family: 'Nunito', sans-serif;
+          font-size: 0.78rem;
+          font-weight: 700;
+          color: #5a4020;
+          cursor: pointer;
+          transition: background 0.15s, transform 0.1s;
+          letter-spacing: 0.02em;
+        }
+
+        .fh-close-btn:hover {
+          background: rgba(255,255,255,0.9);
+          transform: scale(1.03);
+        }
+
+        .fh-body {
+          position: relative;
+          z-index: 1;
+          padding: 1rem 1.25rem;
+          overflow-y: auto;
+          min-height: 0;
+          flex: 1;
+        }
+
+        .fh-backdrop {
+          position: absolute;
+          inset: 0;
+          cursor: default;
+          background: rgba(10,20,10,0.6);
+          backdrop-filter: blur(3px);
+        }
+
+        .fh-deco-strip {
+          text-align: center;
+          padding: 0.4rem;
+          background: linear-gradient(to right, rgba(86,130,60,0.06), rgba(86,130,60,0.12), rgba(86,130,60,0.06));
+          border-bottom: 1px solid rgba(139,109,56,0.15);
+          font-size: 0.65rem;
+          letter-spacing: 0.3em;
+          color: rgba(139,109,56,0.5);
+        }
+      `}</style>
+
       <div
-        className="relative z-10 mx-3 flex max-h-[min(85dvh,720px)] w-full max-w-2xl flex-col rounded-xl border-4 border-amber-900/70 bg-[#141210]/95 text-stone-100 shadow-[0_0_40px_rgba(0,0,0,0.6)]"
-        onClick={(e) => e.stopPropagation()}
+        className="fh-overlay-wrap fixed inset-0 z-[55] flex items-end justify-center pb-6 pt-16 sm:pb-10"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="fh-dialogue-title"
       >
-        <div className="flex items-start justify-between gap-3 border-b border-amber-900/50 px-4 py-3">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-[0.2em] text-amber-200/90">
-              Fernhollow
-            </p>
-            <h2
-              id="fh-dialogue-title"
-              className="mt-1 font-serif text-xl font-semibold text-amber-50"
-            >
-              {meta.title}
-            </h2>
-            <p className="mt-1 text-sm text-stone-400">{meta.shortLabel}</p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="shrink-0 rounded-lg border border-stone-600 bg-stone-800/80 px-3 py-1.5 text-sm text-stone-200 hover:bg-stone-700"
-          >
-            Close
-          </button>
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-          {slug === "garden" ? (
-            <GardenBoardClient />
-          ) : slug === "wrens-house" ? (
-            <div className="space-y-6">
-              <TreasuryDashboard />
-              <ChatWindow slug={slug} variant="dialogue" />
+        <button
+          type="button"
+          className="fh-backdrop"
+          aria-label="Close and return to the village"
+          onClick={onClose}
+        />
+        <div
+          className="fh-window relative z-10 mx-3 flex max-h-[min(85dvh,720px)] w-full max-w-2xl flex-col"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="fh-deco-strip">🍄 · 🌿 · 🌸 · 🍃 · 🌼 · 🍄</div>
+          <div className="fh-header">
+            <div className="fh-header-left">
+              <p className="fh-eyebrow">
+                <span>🌿</span> Fernhollow
+              </p>
+              <h2 id="fh-dialogue-title" className="fh-title">
+                {meta.title}
+              </h2>
+              <p className="fh-sublabel">{meta.shortLabel}</p>
             </div>
-          ) : meta.hasChat ? (
-            <ChatWindow slug={slug} variant="dialogue" />
-          ) : (
-            <p className="text-sm text-stone-400">{meta.description}</p>
-          )}
+            <button type="button" onClick={onClose} className="fh-close-btn">
+              ✦ Close
+            </button>
+          </div>
+          <div className="fh-body">
+            {slug === "village-square" ? (
+              <VillageSquare />
+            ) : slug === "garden" ? (
+              <GardenBoardClient />
+            ) : slug === "wrens-house" ? (
+              <div className="space-y-6">
+                <TreasuryDashboard />
+                <ChatWindow slug={slug} variant="dialogue" />
+              </div>
+            ) : meta.hasChat ? (
+              <ChatWindow slug={slug} variant="dialogue" />
+            ) : (
+              <p className="text-sm" style={{ color: "#7a8c6a" }}>{meta.description}</p>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

@@ -16,13 +16,24 @@ world/
   houses-tileset.png
   nature-tileset.png
 
+Cozy Hollow V1.3/Files/
+  Ground Tileset v3.png
+  Meadow Assets V2.png
+  Water grass tileset v2.png
+  Animal Sprites.png
+
+Serene_Village_revamped_v1.9/
+  Houses_TILESET_B-C-D-E.png
+  Serene_Village_16x16.png
+  (If your zip only has SERENE_VILLAGE_REVAMPED/, copy those PNGs up into Serene_Village_revamped_v1.9/ so the URLs match lib/assets.ts SERENE_VILLAGE.)
+
 ui/
   chat-bubble.png
   nameplate.png
 
 audio/
-  forest-ambience.mp3
   background-music.mp3
-  birdsong.mp3
-  river.mp3
-  fireplace.mp3
+  forest-ambience.wav
+  birdsong.wav
+  river.wav
+  fireplace.m4a

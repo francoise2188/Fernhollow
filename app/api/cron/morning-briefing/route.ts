@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getBaseSystemPrompt } from "@/lib/agents";
-import { completeConversation } from "@/lib/anthropic";
+import type { FernhollowAgent } from "@/lib/fernhollow-memory";
+import { completeWithSearch } from "@/lib/anthropic";
 import { verifyCronRequest } from "@/lib/cron-auth";
 import { getErrorMessage } from "@/lib/errors";
 import { completeTask, failTask, startTask } from "@/lib/fernhollow-tasks";
@@ -18,7 +19,31 @@ import {
 
 export const runtime = "nodejs";
 
-/** Daily ~8am CT: Clover drafts a morning briefing (draft content). */
+const BRIEFING_AGENTS: Exclude<FernhollowAgent, "shared">[] = [
+  "clover",
+  "rosie",
+  "scout",
+  "wren",
+];
+
+function morningBriefingLayer(agent: Exclude<FernhollowAgent, "shared">): string {
+  const base = `You are writing a short morning briefing for Frankie (scheduled job). Coffee on the porch with your best friend: warm, human, not a project manager. Tight paragraphs. No bullet lists. Aim under about 220 words.`;
+
+  switch (agent) {
+    case "clover":
+      return `${base} Name what matters today across Blirt, Saudade, and PrintBooth, and one gentle nudge if something needs her eyes.`;
+    case "rosie":
+      return `${base} Lead with feeling: what emotional tone matters for Saudade and her events today, and one sensory or heart detail if it helps.`;
+    case "scout":
+      return `${base} Be practical: what actually needs doing today for PrintBooth and vendors, and one clear priority if something is stuck.`;
+    case "wren":
+      return `${base} Focus on income and the village fund: wins, numbers if relevant, and what needs her OK before you move forward.`;
+    default:
+      return base;
+  }
+}
+
+/** Daily ~8am CT: each girl drafts a morning briefing (draft content rows). */
 export async function GET(request: Request) {
   const gate = verifyCronRequest(request);
   if (!gate.ok) {
@@ -28,83 +53,105 @@ export async function GET(request: Request) {
     );
   }
 
-  let taskId: string | null = null;
-  try {
-    const { id } = await startTask({
-      agent: "clover",
-      taskType: "morning_briefing",
-      business: null,
-    });
-    taskId = id;
+  const month = currentMonthString();
+  const rows = await listTreasuryForMonth(month);
+  const totals = summarizeTreasury(rows);
 
-    const month = currentMonthString();
-    const rows = await listTreasuryForMonth(month);
-    const totals = summarizeTreasury(rows);
-    const memories = await fetchRelevantMemories({
-      agent: "clover",
-      limit: 10,
-    });
-    const memoryBlock = formatMemoriesForPrompt(memories);
+  const supabase = getSupabaseAdmin();
+  const { count: draftCount } = await supabase
+    .from("fernhollow_content")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "draft");
 
-    const supabase = getSupabaseAdmin();
-    const { count: draftCount } = await supabase
-      .from("fernhollow_content")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "draft");
+  const context = [
+    `Calendar month: ${month}`,
+    `Treasury net so far: ${formatUsd(totals.net_cents)} (income ${formatUsd(totals.income_cents)}, expenses ${formatUsd(totals.expense_cents)})`,
+    `Draft posts in the queue (approx): ${draftCount ?? 0}`,
+  ].join("\n");
 
-    const context = [
-      `Calendar month: ${month}`,
-      `Treasury net so far: ${formatUsd(totals.net_cents)} (income ${formatUsd(totals.income_cents)}, expenses ${formatUsd(totals.expense_cents)})`,
-      `Draft posts in the queue (approx): ${draftCount ?? 0}`,
-    ].join("\n");
+  type OkRow = {
+    agent: string;
+    contentId: string;
+    taskId: string;
+  };
+  type ErrRow = { agent: string; error: string };
+  const results: (OkRow | ErrRow)[] = [];
 
-    const system = `${getBaseSystemPrompt("clover")}
+  for (const agent of BRIEFING_AGENTS) {
+    let taskId: string | null = null;
+    try {
+      const { id } = await startTask({
+        agent,
+        taskType: "morning_briefing",
+        business: null,
+      });
+      taskId = id;
 
-You are writing a short morning briefing for Frankie (scheduled job). Coffee on the porch with your best friend: warm, human, not a project manager. Tight paragraphs. No bullet lists. Name what matters today across Blirt, Saudade, and PrintBooth, and one gentle nudge if something needs her eyes. Aim under about 220 words.`;
+      const memories = await fetchRelevantMemories({
+        agent,
+        limit: 10,
+      });
+      const memoryBlock = formatMemoriesForPrompt(memories);
 
-    const fullSystem = memoryBlock
-      ? `${system}\n\n${memoryBlock}\n\nContext:\n${context}`
-      : `${system}\n\nContext:\n${context}`;
+      const system = `${getBaseSystemPrompt(agent)}
 
-    const briefing = await completeConversation({
-      system: fullSystem,
-      messages: [
-        {
-          role: "user",
-          content:
-            "Write today's morning briefing for Frankie (no em-dashes).",
-        },
-      ],
-      maxTokens: 700,
-    });
+${morningBriefingLayer(agent)}`;
 
-    const { data: content, error: insErr } = await supabase
-      .from("fernhollow_content")
-      .insert({
-        agent: "clover",
-        business: "fernhollow",
-        content_type: "email",
-        platform: null,
-        content: briefing,
-        status: "draft",
-      })
-      .select("id")
-      .single();
+      const fullSystem = memoryBlock
+        ? `${system}\n\n${memoryBlock}\n\nContext:\n${context}`
+        : `${system}\n\nContext:\n${context}`;
 
-    if (insErr) throw insErr;
+      const briefing = await completeWithSearch({
+        system: fullSystem,
+        messages: [
+          {
+            role: "user",
+            content:
+              "Write today's morning briefing for Frankie from your perspective (no em-dashes).",
+          },
+        ],
+        maxTokens: 700,
+      });
 
-    const summary = `Morning briefing draft saved. Content id: ${content.id as string}`;
-    await completeTask(taskId, summary);
+      const { data: content, error: insErr } = await supabase
+        .from("fernhollow_content")
+        .insert({
+          agent,
+          business: "fernhollow",
+          content_type: "email",
+          platform: null,
+          content: briefing,
+          status: "draft",
+        })
+        .select("id")
+        .single();
 
-    return NextResponse.json({
-      ok: true,
-      contentId: content.id,
-      taskId,
-    });
-  } catch (e) {
-    console.error(e);
-    const msg = getErrorMessage(e);
-    if (taskId) await failTask(taskId, msg);
-    return NextResponse.json({ error: msg }, { status: 500 });
+      if (insErr) throw insErr;
+
+      const summary = `Morning briefing draft saved. Content id: ${content.id as string}`;
+      await completeTask(taskId, summary);
+
+      results.push({
+        agent,
+        contentId: content.id as string,
+        taskId,
+      });
+    } catch (e) {
+      console.error(`morning-briefing:${agent}`, e);
+      const msg = getErrorMessage(e);
+      if (taskId) await failTask(taskId, msg);
+      results.push({ agent, error: msg });
+    }
   }
+
+  const failures = results.filter((r): r is ErrRow => "error" in r);
+  const allFailed = failures.length === BRIEFING_AGENTS.length;
+
+  return NextResponse.json(
+    {
+      ok: failures.length === 0,
+      results,
+    },
+    { status: allFailed ? 500 : 200 },
+  );
 }
