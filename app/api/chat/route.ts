@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readAuthFromCookies } from "@/lib/auth";
 import {
   completeConversation,
   completeWithSearch,
@@ -44,6 +45,9 @@ function patternHintFromMessage(message: string): "pattern" | undefined {
 }
 
 export async function GET(request: Request) {
+  const authed = await readAuthFromCookies();
+  if (!authed) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const url = new URL(request.url);
   const sessionId = url.searchParams.get("sessionId")?.trim() ?? "";
   if (!sessionId) {
@@ -70,6 +74,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const authed = await readAuthFromCookies();
+  if (!authed) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const body = await request.json().catch(() => null);
   if (!body || typeof body !== "object") {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
