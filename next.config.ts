@@ -6,6 +6,23 @@ const nextConfig: NextConfig = {
   async rewrites() {
     const cozy = "/assets/fernhollow/cozy-people";
     return [
+      // Legacy .mp3 URLs (old bundles) → real files (was middleware rewrites).
+      {
+        source: "/assets/fernhollow/audio/forest-ambience.mp3",
+        destination: "/assets/fernhollow/audio/forest-ambience.wav",
+      },
+      {
+        source: "/assets/fernhollow/audio/birdsong.mp3",
+        destination: "/assets/fernhollow/audio/birdsong.wav",
+      },
+      {
+        source: "/assets/fernhollow/audio/river.mp3",
+        destination: "/assets/fernhollow/audio/river.wav",
+      },
+      {
+        source: "/assets/fernhollow/audio/fireplace.mp3",
+        destination: "/assets/fernhollow/audio/fireplace.m4a",
+      },
       {
         source: `${cozy}/clothes/Dress.png`,
         destination: `${cozy}/clothes/dress.png`,
