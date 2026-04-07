@@ -28,7 +28,9 @@ export function routeChime(
     lower.includes("vendor") ||
     lower.includes("subscriber") ||
     lower.includes("mac") ||
-    lower.includes("template")
+    lower.includes("template") ||
+    lower.includes("tutorial") ||
+    lower.includes("youtube")
   ) {
     if (fromAgent !== "scout") recipients.push("scout");
   }
@@ -41,7 +43,10 @@ export function routeChime(
     lower.includes("venue") ||
     lower.includes("magnet") ||
     lower.includes("keychain") ||
-    lower.includes("activation")
+    lower.includes("activation") ||
+    lower.includes("bride") ||
+    lower.includes("corporate") ||
+    lower.includes("austin")
   ) {
     if (fromAgent !== "rosie") recipients.push("rosie");
   }
@@ -54,23 +59,42 @@ export function routeChime(
     lower.includes("niche") ||
     lower.includes("market") ||
     lower.includes("village fund") ||
-    lower.includes("strategy")
+    lower.includes("strategy") ||
+    lower.includes("revenue") ||
+    lower.includes("profit") ||
+    lower.includes("sales") ||
+    lower.includes("pricing") ||
+    lower.includes("launch")
   ) {
     if (fromAgent !== "clover") recipients.push("clover");
   }
 
-  // Wren gets notified about income opportunities from other girls
+  // Etsy/digital products → Wren
   if (
     lower.includes("digital product") ||
     lower.includes("etsy") ||
     lower.includes("fiverr") ||
     lower.includes("template pack") ||
-    lower.includes("printify")
+    lower.includes("printify") ||
+    lower.includes("download") ||
+    lower.includes("passive income") ||
+    lower.includes("shop")
   ) {
     if (fromAgent !== "wren") recipients.push("wren");
   }
 
-  // Deduplicate
+  // Fallback — if no specific routing matched,
+  // always send to Clover so nothing goes unheard
+  if (recipients.length === 0 && fromAgent !== "clover") {
+    recipients.push("clover");
+  }
+
+  // Second fallback for Clover — she talks to Scout and Wren
+  if (recipients.length === 0 && fromAgent === "clover") {
+    recipients.push("scout");
+    recipients.push("wren");
+  }
+
   return [...new Set(recipients)];
 }
 

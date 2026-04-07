@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { FERNHOLLOW_OPEN_CHAT_EVENT } from "@/lib/assets";
 
 type Briefing = {
@@ -38,10 +38,27 @@ function BriefingCard({
   briefing,
   isArchive,
   onAct,
+  expandedCard,
+  setExpandedCard,
+  feedbackNotes,
+  setFeedbackNotes,
+  stopSuggesting,
+  setStopSuggesting,
 }: {
   briefing: Briefing;
   isArchive: boolean;
-  onAct: (id: string, status: "approved" | "dismissed") => void;
+  onAct: (
+    id: string,
+    status: "approved" | "dismissed",
+    note?: string,
+    stopSuggestion?: boolean,
+  ) => void;
+  expandedCard: string | null;
+  setExpandedCard: (id: string | null) => void;
+  feedbackNotes: Record<string, string>;
+  setFeedbackNotes: Dispatch<SetStateAction<Record<string, string>>>;
+  stopSuggesting: Record<string, boolean>;
+  setStopSuggesting: Dispatch<SetStateAction<Record<string, boolean>>>;
 }) {
   const meta = GIRL_META[briefing.agent] ?? {
     emoji: "\u{1F33F}",
@@ -135,82 +152,166 @@ function BriefingCard({
             padding: "0.6rem 1rem",
             borderTop: "1px solid rgba(139,109,56,0.1)",
             display: "flex",
-            flexWrap: "wrap",
+            flexDirection: "column",
             gap: "0.5rem",
-            justifyContent: "flex-end",
           }}
         >
-          <button
-            type="button"
-            onClick={() => onAct(briefing.id, "dismissed")}
+          {expandedCard === briefing.id && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+              <input
+                type="text"
+                placeholder="Optional note (why you approved/dismissed)..."
+                value={feedbackNotes[briefing.id] ?? ""}
+                onChange={(e) =>
+                  setFeedbackNotes((prev) => ({
+                    ...prev,
+                    [briefing.id]: e.target.value,
+                  }))
+                }
+                style={{
+                  padding: "0.4rem 0.75rem",
+                  borderRadius: "10px",
+                  border: "1px solid rgba(139,109,56,0.25)",
+                  background: "rgba(255,255,255,0.8)",
+                  fontSize: "0.78rem",
+                  fontFamily: "Nunito, sans-serif",
+                  color: "#3d3020",
+                  outline: "none",
+                }}
+              />
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.4rem",
+                  fontSize: "0.75rem",
+                  color: "#8a7a5a",
+                  cursor: "pointer",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={stopSuggesting[briefing.id] ?? false}
+                  onChange={(e) =>
+                    setStopSuggesting((prev) => ({
+                      ...prev,
+                      [briefing.id]: e.target.checked,
+                    }))
+                  }
+                />
+                Stop suggesting this type of idea
+              </label>
+            </div>
+          )}
+
+          <div
             style={{
-              padding: "0.35rem 0.85rem",
-              borderRadius: "20px",
-              border: "1px solid rgba(139,109,56,0.25)",
-              background: "transparent",
-              fontSize: "0.75rem",
-              fontWeight: 600,
-              color: "#8a7a5a",
-              cursor: "pointer",
-              fontFamily: "Nunito, sans-serif",
+              display: "flex",
+              gap: "0.5rem",
+              justifyContent: "flex-end",
+              flexWrap: "wrap",
             }}
           >
-            Dismiss
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              const slugMap: Record<string, string> = {
-                clover: "clovers-house",
-                rosie: "rosies-cottage",
-                scout: "scouts-workshop",
-                wren: "wrens-house",
-              };
-              const slug = slugMap[briefing.agent] ?? "clovers-house";
-              window.dispatchEvent(
-                new CustomEvent(FERNHOLLOW_OPEN_CHAT_EVENT, {
-                  detail: {
-                    slug,
-                    briefingContext: briefing.content,
-                    initialMessage:
-                      "I just read your morning briefing and want to talk about it. What would your next steps be?",
-                  },
-                }),
-              );
-            }}
-            style={{
-              padding: "0.35rem 0.85rem",
-              borderRadius: "20px",
-              border: "1px solid rgba(86,130,60,0.3)",
-              background: "transparent",
-              fontSize: "0.75rem",
-              fontWeight: 600,
-              color: "#56823c",
-              cursor: "pointer",
-              fontFamily: "Nunito, sans-serif",
-            }}
-          >
-            {"\u{1F4AC} Talk to "}
-            {GIRL_META[briefing.agent]?.name ?? briefing.agent}
-          </button>
-          <button
-            type="button"
-            onClick={() => onAct(briefing.id, "approved")}
-            style={{
-              padding: "0.35rem 0.85rem",
-              borderRadius: "20px",
-              border: "none",
-              background: "linear-gradient(135deg, #56823c, #3d6b28)",
-              fontSize: "0.75rem",
-              fontWeight: 700,
-              color: "#f0ead8",
-              cursor: "pointer",
-              fontFamily: "Nunito, sans-serif",
-              boxShadow: "0 2px 6px rgba(61,107,40,0.25)",
-            }}
-          >
-            {"\u2726 Approve"}
-          </button>
+            <button
+              type="button"
+              onClick={() => {
+                const slugMap: Record<string, string> = {
+                  clover: "clovers-house",
+                  rosie: "rosies-cottage",
+                  scout: "scouts-workshop",
+                  wren: "wrens-house",
+                };
+                const slug = slugMap[briefing.agent] ?? "clovers-house";
+                window.dispatchEvent(
+                  new CustomEvent(FERNHOLLOW_OPEN_CHAT_EVENT, {
+                    detail: {
+                      slug,
+                      briefingContext: briefing.content,
+                      initialMessage:
+                        "I just read your morning briefing and want to talk about it. What would your next steps be?",
+                    },
+                  }),
+                );
+              }}
+              style={{
+                padding: "0.35rem 0.85rem",
+                borderRadius: "20px",
+                border: "1px solid rgba(86,130,60,0.3)",
+                background: "transparent",
+                fontSize: "0.75rem",
+                fontWeight: 600,
+                color: "#56823c",
+                cursor: "pointer",
+                fontFamily: "Nunito, sans-serif",
+              }}
+            >
+              {"\u{1F4AC} Talk to "}
+              {GIRL_META[briefing.agent]?.name ?? briefing.agent}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (expandedCard !== briefing.id) {
+                  setExpandedCard(briefing.id);
+                } else {
+                  onAct(
+                    briefing.id,
+                    "dismissed",
+                    feedbackNotes[briefing.id],
+                    stopSuggesting[briefing.id],
+                  );
+                  setExpandedCard(null);
+                }
+              }}
+              style={{
+                padding: "0.35rem 0.85rem",
+                borderRadius: "20px",
+                border: "1px solid rgba(139,109,56,0.25)",
+                background: "transparent",
+                fontSize: "0.75rem",
+                fontWeight: 600,
+                color: "#8a7a5a",
+                cursor: "pointer",
+                fontFamily: "Nunito, sans-serif",
+              }}
+            >
+              {expandedCard === briefing.id ? "Confirm Dismiss" : "Dismiss"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (expandedCard !== briefing.id) {
+                  setExpandedCard(briefing.id);
+                } else {
+                  onAct(
+                    briefing.id,
+                    "approved",
+                    feedbackNotes[briefing.id],
+                    stopSuggesting[briefing.id],
+                  );
+                  setExpandedCard(null);
+                }
+              }}
+              style={{
+                padding: "0.35rem 0.85rem",
+                borderRadius: "20px",
+                border: "none",
+                background: "linear-gradient(135deg, #56823c, #3d6b28)",
+                fontSize: "0.75rem",
+                fontWeight: 700,
+                color: "#f0ead8",
+                cursor: "pointer",
+                fontFamily: "Nunito, sans-serif",
+                boxShadow: "0 2px 6px rgba(61,107,40,0.25)",
+              }}
+            >
+              {expandedCard === briefing.id
+                ? "\u2726 Confirm Approve"
+                : "\u2726 Approve"}
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -224,6 +325,11 @@ export function VillageSquare() {
   const [error, setError] = useState<string | null>(null);
   const [chimes, setChimes] = useState<Chime[]>([]);
   const [loadingChimes, setLoadingChimes] = useState(false);
+  const [expandedCard, setExpandedCard] = useState<string | null>(null);
+  const [feedbackNotes, setFeedbackNotes] = useState<Record<string, string>>({});
+  const [stopSuggesting, setStopSuggesting] = useState<Record<string, boolean>>(
+    {},
+  );
 
   useEffect(() => {
     if (tab !== "draft" && tab !== "archive") return;
@@ -251,12 +357,21 @@ export function VillageSquare() {
     setError(null);
   };
 
-  const onAct = async (id: string, status: "approved" | "dismissed") => {
+  const onAct = async (
+    id: string,
+    status: "approved" | "dismissed",
+    note?: string,
+    stopSuggestion?: boolean,
+  ) => {
     setBriefings((items) => items.filter((x) => x.id !== id));
     await fetch(`/api/briefings/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({
+        status,
+        note: note?.trim() || undefined,
+        stopSuggesting: stopSuggestion ?? false,
+      }),
     });
   };
 
@@ -389,6 +504,12 @@ export function VillageSquare() {
             briefing={briefing}
             isArchive={false}
             onAct={onAct}
+            expandedCard={expandedCard}
+            setExpandedCard={setExpandedCard}
+            feedbackNotes={feedbackNotes}
+            setFeedbackNotes={setFeedbackNotes}
+            stopSuggesting={stopSuggesting}
+            setStopSuggesting={setStopSuggesting}
           />
         ))}
 
@@ -430,6 +551,12 @@ export function VillageSquare() {
                   briefing={briefing}
                   isArchive
                   onAct={onAct}
+                  expandedCard={expandedCard}
+                  setExpandedCard={setExpandedCard}
+                  feedbackNotes={feedbackNotes}
+                  setFeedbackNotes={setFeedbackNotes}
+                  stopSuggesting={stopSuggesting}
+                  setStopSuggesting={setStopSuggesting}
                 />
               ))}
             </div>

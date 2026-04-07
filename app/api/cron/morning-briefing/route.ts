@@ -3,6 +3,10 @@ import { getBaseSystemPrompt } from "@/lib/agents";
 import type { FernhollowAgent } from "@/lib/fernhollow-memory";
 import { completeWithSearch } from "@/lib/anthropic";
 import { verifyCronRequest } from "@/lib/cron-auth";
+import {
+  formatFeedbackForPrompt,
+  getFeedbackSummaryForAgent,
+} from "@/lib/fernhollow-feedback";
 import { sendChimesForBriefing } from "@/lib/fernhollow-chimes";
 import { getErrorMessage } from "@/lib/errors";
 import { completeTask, failTask, startTask } from "@/lib/fernhollow-tasks";
@@ -94,13 +98,19 @@ export async function GET(request: Request) {
       });
       const memoryBlock = formatMemoriesForPrompt(memories);
 
-      const system = `${getBaseSystemPrompt(agent)}
+      const feedbackSummary = await getFeedbackSummaryForAgent(agent);
+      const feedbackBlock = formatFeedbackForPrompt(agent, feedbackSummary);
 
-${morningBriefingLayer(agent)}`;
+      const system = `${getBaseSystemPrompt(agent)}\n\n${morningBriefingLayer(agent)}`;
 
-      const fullSystem = memoryBlock
-        ? `${system}\n\n${memoryBlock}\n\nContext:\n${context}`
-        : `${system}\n\nContext:\n${context}`;
+      const fullSystem = [
+        system,
+        memoryBlock,
+        feedbackBlock,
+        `Context:\n${context}`,
+      ]
+        .filter(Boolean)
+        .join("\n\n");
 
       const briefing = await completeWithSearch({
         system: fullSystem,
