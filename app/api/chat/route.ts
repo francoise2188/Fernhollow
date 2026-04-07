@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
-import { completeWithSearch, type ChatTurn } from "@/lib/anthropic";
+import {
+  completeConversation,
+  completeWithSearch,
+  type ChatTurn,
+} from "@/lib/anthropic";
 import { buildAgentSystemPrompt } from "@/lib/agents";
-import { completeConversation, type ChatTurn } from "@/lib/anthropic";
 import { getErrorMessage } from "@/lib/errors";
 import {
   formatMemoriesForPrompt,
