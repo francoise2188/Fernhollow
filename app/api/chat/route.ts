@@ -87,6 +87,9 @@ export async function POST(request: Request) {
   const message =
     typeof body.message === "string" ? body.message.trim() : "";
   const slug = typeof body.slug === "string" ? body.slug.trim() : "";
+  const raw = body as Record<string, unknown>;
+  const briefingContext =
+    typeof raw.briefingContext === "string" ? raw.briefingContext.trim() : "";
 
   if (!sessionId || !message || !slug) {
     return NextResponse.json(
@@ -138,12 +141,17 @@ export async function POST(request: Request) {
       });
       const memoryBlock = formatMemoriesForPrompt(memories);
       const base = buildAgentSystemPrompt(agent, meta.location);
-      const system = memoryBlock ? `${base}\n\n${memoryBlock}` : base;
+      const systemWithContext = briefingContext
+        ? `${base}\n\nIMPORTANT CONTEXT: You wrote the following in your morning briefing today. You know this because YOU wrote it. When Frankie references it, respond as if you remember writing it:\n\n"${briefingContext}"`
+        : base;
+      const system = memoryBlock
+        ? `${systemWithContext}\n\n${memoryBlock}`
+        : systemWithContext;
 
       reply = await completeWithSearch({
-  system,
-  messages: anthropicMessages,
-});
+        system,
+        messages: anthropicMessages,
+      });
     }
 
     await logConversationMessage({

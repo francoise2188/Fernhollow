@@ -15,6 +15,9 @@ export function FernhollowGameShell() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const chatParam = searchParams.get("chat");
+  const initialMessage = searchParams.get("msg") ?? undefined;
+  /** `URLSearchParams` / Next already decode; avoid decodeURIComponent (breaks on "%" in text). */
+  const briefingContext = searchParams.get("ctx") ?? undefined;
   const openSlug: LocationSlug | null =
     chatParam && isLocationSlug(chatParam) ? chatParam : null;
 
@@ -28,11 +31,21 @@ export function FernhollowGameShell() {
 
   useEffect(() => {
     const onOpen = (e: Event) => {
-      const d = (e as CustomEvent<{ slug?: string }>).detail;
+      const d = (
+        e as CustomEvent<{
+          slug?: string;
+          initialMessage?: string;
+          briefingContext?: string;
+        }>
+      ).detail;
       if (d?.slug && isLocationSlug(d.slug)) {
-        router.replace(`/?chat=${encodeURIComponent(d.slug)}`, {
-          scroll: false,
-        });
+        const params = new URLSearchParams();
+        params.set("chat", d.slug);
+        if (d.initialMessage) params.set("msg", d.initialMessage);
+        if (d.briefingContext) {
+          params.set("ctx", d.briefingContext.slice(0, 500));
+        }
+        router.replace(`/?${params.toString()}`, { scroll: false });
       }
     };
     window.addEventListener(FERNHOLLOW_OPEN_CHAT_EVENT, onOpen);
@@ -45,10 +58,15 @@ export function FernhollowGameShell() {
   return (
     <div className="fixed inset-0 z-0 bg-[#0f160f]">
       <div className="absolute inset-0">
-        <FernhollowGame />
+        <FernhollowGame chatOverlayOpen={!!openSlug} />
       </div>
       {openSlug ? (
-        <GameChatOverlay slug={openSlug} onClose={close} />
+        <GameChatOverlay
+          slug={openSlug}
+          onClose={close}
+          initialMessage={initialMessage}
+          briefingContext={briefingContext}
+        />
       ) : null}
       <div className="pointer-events-none absolute inset-0 z-[58]">
         <div className="pointer-events-auto absolute top-4 right-4 flex gap-2">

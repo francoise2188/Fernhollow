@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { LocationSlug } from "@/lib/locations";
 
 type Row = { role: string; content: string };
@@ -29,16 +29,25 @@ function ChatSkeleton() {
 function ChatWindowInner({
   slug,
   variant = "default",
+  initialMessage,
+  briefingContext,
 }: {
   slug: LocationSlug;
   variant?: "default" | "dialogue";
+  initialMessage?: string;
+  briefingContext?: string;
 }) {
+  const hasSentInitial = useRef(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Row[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    hasSentInitial.current = false;
+  }, [slug, initialMessage, briefingContext]);
 
   useEffect(() => {
     const key = `fh_session_${slug}`;
@@ -67,7 +76,13 @@ function ChatWindowInner({
             content: m.content,
           }),
         );
-        if (!cancelled) setMessages(rows);
+        if (!cancelled) {
+          if (briefingContext && rows.length === 0) {
+            setMessages([{ role: "assistant", content: briefingContext }]);
+          } else {
+            setMessages(rows);
+          }
+        }
       } catch {
         if (!cancelled) setError("Could not load earlier messages.");
       } finally {
@@ -77,37 +92,67 @@ function ChatWindowInner({
     return () => {
       cancelled = true;
     };
-  }, [sessionId]);
+  }, [sessionId, briefingContext]);
+
+  const sendText = useCallback(
+    async (text: string) => {
+      const trimmed = text.trim();
+      if (!sessionId || !trimmed) return;
+      setInput("");
+      setError(null);
+      setMessages((m) => [...m, { role: "user", content: trimmed }]);
+      setLoading(true);
+      try {
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+          sessionId,
+          message: trimmed,
+          slug,
+          briefingContext,
+        }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(
+            typeof data.error === "string" ? data.error : "Send failed",
+          );
+        }
+        setMessages((m) => [
+          ...m,
+          { role: "assistant", content: data.reply as string },
+        ]);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Something went wrong.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [sessionId, slug, briefingContext],
+  );
 
   const send = useCallback(async () => {
-    if (!sessionId || !input.trim()) return;
     const text = input.trim();
-    setInput("");
-    setError(null);
-    setMessages((m) => [...m, { role: "user", content: text }]);
-    setLoading(true);
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, message: text, slug }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(
-          typeof data.error === "string" ? data.error : "Send failed",
-        );
-      }
-      setMessages((m) => [
-        ...m,
-        { role: "assistant", content: data.reply as string },
-      ]);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong.");
-    } finally {
-      setLoading(false);
-    }
-  }, [sessionId, slug, input]);
+    if (!text) return;
+    await sendText(text);
+  }, [input, sendText]);
+
+  useEffect(() => {
+    if (
+      !initialMessage?.trim() ||
+      !sessionId ||
+      loadingHistory ||
+      hasSentInitial.current
+    )
+      return;
+    hasSentInitial.current = true;
+    setInput(initialMessage);
+    const t = window.setTimeout(() => {
+      void sendText(initialMessage.trim());
+    }, 100);
+    return () => window.clearTimeout(t);
+  }, [initialMessage, sessionId, loadingHistory, sendText]);
 
   const outer =
     variant === "dialogue"
@@ -258,9 +303,13 @@ function ChatWindowInner({
 export function ChatWindow({
   slug,
   variant = "default",
+  initialMessage,
+  briefingContext,
 }: {
   slug: LocationSlug;
   variant?: "default" | "dialogue";
+  initialMessage?: string;
+  briefingContext?: string;
 }) {
   const [mounted, setMounted] = useState(false);
 
@@ -272,5 +321,12 @@ export function ChatWindow({
     return <ChatSkeleton />;
   }
 
-  return <ChatWindowInner slug={slug} variant={variant} />;
+  return (
+    <ChatWindowInner
+      slug={slug}
+      variant={variant}
+      initialMessage={initialMessage}
+      briefingContext={briefingContext}
+    />
+  );
 }

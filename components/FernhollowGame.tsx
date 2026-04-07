@@ -100,8 +100,21 @@ function addInvisibleHitZone(
   });
 }
 
-export function FernhollowGame() {
+export function FernhollowGame({
+  chatOverlayOpen = false,
+}: {
+  chatOverlayOpen?: boolean;
+} = {}) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const gameRef = useRef<import("phaser").Game | null>(null);
+  const chatOverlayOpenRef = useRef(chatOverlayOpen);
+  chatOverlayOpenRef.current = chatOverlayOpen;
+
+  useEffect(() => {
+    const g = gameRef.current;
+    if (!g) return;
+    g.input.enabled = !chatOverlayOpen;
+  }, [chatOverlayOpen]);
 
   useEffect(() => {
     const parent = containerRef.current;
@@ -1934,11 +1947,14 @@ export function FernhollowGame() {
         scene: [VillageScene],
         audio: { noAudio: true },
       });
+      gameRef.current = game;
+      game.input.enabled = !chatOverlayOpenRef.current;
     });
 
     return () => {
       document.body.style.cursor = "default";
       cancelled = true;
+      gameRef.current = null;
       game?.destroy(true);
       game = null;
     };

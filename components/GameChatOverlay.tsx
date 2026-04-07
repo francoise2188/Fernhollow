@@ -10,9 +10,16 @@ import { LOCATIONS, type LocationSlug } from "@/lib/locations";
 type Props = {
   slug: LocationSlug;
   onClose: () => void;
+  initialMessage?: string;
+  briefingContext?: string;
 };
 
-export function GameChatOverlay({ slug, onClose }: Props) {
+export function GameChatOverlay({
+  slug,
+  onClose,
+  initialMessage,
+  briefingContext,
+}: Props) {
   const meta = LOCATIONS[slug];
 
   const onKey = useCallback(
@@ -152,12 +159,17 @@ export function GameChatOverlay({ slug, onClose }: Props) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="fh-dialogue-title"
+        style={{ pointerEvents: "auto" }}
+        onPointerDownCapture={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+        onPointerUp={(e) => e.stopPropagation()}
       >
         <button
           type="button"
           className="fh-backdrop"
           aria-label="Close and return to the village"
           onClick={onClose}
+          style={{ pointerEvents: "all" }}
         />
         <div
           className="fh-window relative z-10 mx-3 flex max-h-[min(85dvh,720px)] w-full max-w-2xl flex-col"
@@ -186,10 +198,20 @@ export function GameChatOverlay({ slug, onClose }: Props) {
             ) : slug === "wrens-house" ? (
               <div className="space-y-6">
                 <TreasuryDashboard />
-                <ChatWindow slug={slug} variant="dialogue" />
+                <ChatWindow
+                  slug={slug}
+                  variant="dialogue"
+                  initialMessage={initialMessage}
+                  briefingContext={briefingContext}
+                />
               </div>
             ) : meta.hasChat ? (
-              <ChatWindow slug={slug} variant="dialogue" />
+              <ChatWindow
+                slug={slug}
+                variant="dialogue"
+                initialMessage={initialMessage}
+                briefingContext={briefingContext}
+              />
             ) : (
               <p className="text-sm" style={{ color: "#7a8c6a" }}>{meta.description}</p>
             )}

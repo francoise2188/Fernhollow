@@ -3,6 +3,7 @@ import { getBaseSystemPrompt } from "@/lib/agents";
 import type { FernhollowAgent } from "@/lib/fernhollow-memory";
 import { completeWithSearch } from "@/lib/anthropic";
 import { verifyCronRequest } from "@/lib/cron-auth";
+import { sendChimesForBriefing } from "@/lib/fernhollow-chimes";
 import { getErrorMessage } from "@/lib/errors";
 import { completeTask, failTask, startTask } from "@/lib/fernhollow-tasks";
 import {
@@ -27,7 +28,7 @@ const BRIEFING_AGENTS: Exclude<FernhollowAgent, "shared">[] = [
 ];
 
 function morningBriefingLayer(agent: Exclude<FernhollowAgent, "shared">): string {
-  const base = `You are writing a short morning briefing for Frankie (scheduled job). Coffee on the porch with your best friend: warm, human, not a project manager. Tight paragraphs. No bullet lists. Aim under about 220 words.`;
+  const base = `You are writing a short morning briefing for Frankie (scheduled job). Coffee on the porch with your best friend: warm, human, not a project manager. Tight paragraphs. No bullet lists. Aim under about 220 words. End with one short, concrete offer in your voice: invite Frankie to let you take a specific next step (draft something, research something, follow up, or build a small piece). Phrase it as a warm question or invitation—like asking if she wants you to handle it—not as a bullet list.`;
 
   switch (agent) {
     case "clover":
@@ -135,6 +136,13 @@ ${morningBriefingLayer(agent)}`;
         agent,
         contentId: content.id as string,
         taskId,
+      });
+
+      // Send chimes to relevant girls
+      await sendChimesForBriefing({
+        fromAgent: agent,
+        briefingContent: briefing,
+        sourceContentId: content.id as string,
       });
     } catch (e) {
       console.error(`morning-briefing:${agent}`, e);

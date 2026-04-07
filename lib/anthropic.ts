@@ -104,3 +104,32 @@ export async function completeWithSearch(input: {
   if (!text) throw new Error("No text in Anthropic response");
   return text;
 }
+
+/**
+ * Fast, cheap model for simple inter-agent communication.
+ * Use for girl-to-girl handoffs, not complex research or chat.
+ */
+export async function completeWithHaiku(input: {
+  system: string;
+  messages: ChatTurn[];
+  maxTokens?: number;
+}): Promise<string> {
+  const key = normalizeApiKey(process.env.ANTHROPIC_API_KEY ?? "");
+  if (!key) throw new Error("Missing ANTHROPIC_API_KEY");
+
+  const client = new Anthropic({ apiKey: key });
+
+  const response = await client.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: input.maxTokens ?? 300,
+    system: input.system,
+    messages: input.messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    })),
+  });
+
+  const block = response.content[0];
+  if (!block || block.type !== "text") throw new Error("Unexpected response");
+  return block.text;
+}

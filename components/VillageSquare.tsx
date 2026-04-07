@@ -1,6 +1,7 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { FERNHOLLOW_OPEN_CHAT_EVENT } from "@/lib/assets";
 
 type Briefing = {
   id: string;
@@ -13,13 +14,22 @@ type Briefing = {
   status: string;
 };
 
-type Tab = "draft" | "archive";
+type Chime = {
+  id: string;
+  from_agent: string;
+  to_agent: string;
+  message: string;
+  context_type: string;
+  created_at: string;
+};
+
+type Tab = "draft" | "archive" | "chimes";
 
 const GIRL_META: Record<string, { emoji: string; color: string; name: string }> = {
-  clover: { emoji: "🍀", color: "#56823c", name: "Clover" },
-  rosie: { emoji: "🌸", color: "#c4687a", name: "Rosie" },
-  scout: { emoji: "⚙️", color: "#7a6a3a", name: "Scout" },
-  wren: { emoji: "✨", color: "#4a7a8a", name: "Wren" },
+  clover: { emoji: "\u{1F33F}", color: "#56823c", name: "Clover" },
+  rosie: { emoji: "\u{1F338}", color: "#c4687a", name: "Rosie" },
+  scout: { emoji: "\u2699\uFE0F", color: "#7a6a3a", name: "Scout" },
+  wren: { emoji: "\u2728", color: "#4a7a8a", name: "Wren" },
 };
 
 const ARCHIVE_ORDER = ["clover", "rosie", "scout", "wren"];
@@ -34,7 +44,7 @@ function BriefingCard({
   onAct: (id: string, status: "approved" | "dismissed") => void;
 }) {
   const meta = GIRL_META[briefing.agent] ?? {
-    emoji: "🌿",
+    emoji: "\u{1F33F}",
     color: "#56823c",
     name: briefing.agent,
   };
@@ -93,7 +103,7 @@ function BriefingCard({
                 fontWeight: 600,
               }}
             >
-              {briefing.status === "approved" ? "✦ approved" : "dismissed"}
+              {briefing.status === "approved" ? "\u2726 approved" : "dismissed"}
             </span>
           )}
         </div>
@@ -125,6 +135,7 @@ function BriefingCard({
             padding: "0.6rem 1rem",
             borderTop: "1px solid rgba(139,109,56,0.1)",
             display: "flex",
+            flexWrap: "wrap",
             gap: "0.5rem",
             justifyContent: "flex-end",
           }}
@@ -148,6 +159,42 @@ function BriefingCard({
           </button>
           <button
             type="button"
+            onClick={() => {
+              const slugMap: Record<string, string> = {
+                clover: "clovers-house",
+                rosie: "rosies-cottage",
+                scout: "scouts-workshop",
+                wren: "wrens-house",
+              };
+              const slug = slugMap[briefing.agent] ?? "clovers-house";
+              window.dispatchEvent(
+                new CustomEvent(FERNHOLLOW_OPEN_CHAT_EVENT, {
+                  detail: {
+                    slug,
+                    briefingContext: briefing.content,
+                    initialMessage:
+                      "I just read your morning briefing and want to talk about it. What would your next steps be?",
+                  },
+                }),
+              );
+            }}
+            style={{
+              padding: "0.35rem 0.85rem",
+              borderRadius: "20px",
+              border: "1px solid rgba(86,130,60,0.3)",
+              background: "transparent",
+              fontSize: "0.75rem",
+              fontWeight: 600,
+              color: "#56823c",
+              cursor: "pointer",
+              fontFamily: "Nunito, sans-serif",
+            }}
+          >
+            {"\u{1F4AC} Talk to "}
+            {GIRL_META[briefing.agent]?.name ?? briefing.agent}
+          </button>
+          <button
+            type="button"
             onClick={() => onAct(briefing.id, "approved")}
             style={{
               padding: "0.35rem 0.85rem",
@@ -162,7 +209,7 @@ function BriefingCard({
               boxShadow: "0 2px 6px rgba(61,107,40,0.25)",
             }}
           >
-            ✦ Approve
+            {"\u2726 Approve"}
           </button>
         </div>
       )}
@@ -175,13 +222,27 @@ export function VillageSquare() {
   const [briefings, setBriefings] = useState<Briefing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [chimes, setChimes] = useState<Chime[]>([]);
+  const [loadingChimes, setLoadingChimes] = useState(false);
 
   useEffect(() => {
+    if (tab !== "draft" && tab !== "archive") return;
+    setLoading(true);
     fetch(`/api/briefings?status=${tab}`)
       .then((r) => r.json())
       .then((d) => setBriefings(d.briefings ?? []))
       .catch(() => setError("Could not load briefings."))
       .finally(() => setLoading(false));
+  }, [tab]);
+
+  useEffect(() => {
+    if (tab !== "chimes") return;
+    setLoadingChimes(true);
+    fetch("/api/chimes")
+      .then((r) => r.json())
+      .then((d) => setChimes(d.chimes ?? []))
+      .catch(() => setError("Could not load chimes."))
+      .finally(() => setLoadingChimes(false));
   }, [tab]);
 
   const onTabChange = (next: Tab) => {
@@ -260,14 +321,40 @@ export function VillageSquare() {
                 tab === t ? "0 2px 6px rgba(61,107,40,0.25)" : "none",
             }}
           >
-            {t === "draft" ? "🌿 Inbox" : "📋 Archive"}
+            {t === "draft" ? "\u{1F33F} Inbox" : "\u{1F4CB} Archive"}
           </button>
         ))}
+        <button
+          key="chimes"
+          type="button"
+          onClick={() => {
+            setTab("chimes");
+            setError(null);
+          }}
+          style={{
+            padding: "0.35rem 1rem",
+            borderRadius: "20px",
+            border: tab === "chimes" ? "none" : "1px solid rgba(139,109,56,0.25)",
+            background:
+              tab === "chimes"
+                ? "linear-gradient(135deg, #c4687a, #a0455a)"
+                : "transparent",
+            fontSize: "0.78rem",
+            fontWeight: 700,
+            color: tab === "chimes" ? "#f0ead8" : "#8a7a5a",
+            cursor: "pointer",
+            fontFamily: "Nunito, sans-serif",
+            boxShadow:
+              tab === "chimes" ? "0 2px 6px rgba(164,69,90,0.25)" : "none",
+          }}
+        >
+          {"\u{1F338} Chimes"}
+        </button>
       </div>
 
-      {loading && (
+      {loading && (tab === "draft" || tab === "archive") && (
         <p className="text-center text-sm italic" style={{ color: "#8a7a5a" }}>
-          🌿 Loading...
+          {"\u{1F33F} Loading..."}
         </p>
       )}
 
@@ -277,9 +364,14 @@ export function VillageSquare() {
         </p>
       )}
 
-      {!loading && !error && briefings.length === 0 && (
+      {!loading &&
+        !error &&
+        (tab === "draft" || tab === "archive") &&
+        briefings.length === 0 && (
         <div className="py-8 text-center">
-          <p style={{ fontSize: "2rem" }}>{tab === "draft" ? "🌸" : "📋"}</p>
+          <p style={{ fontSize: "2rem" }}>
+            {tab === "draft" ? "\u{1F338}" : "\u{1F4CB}"}
+          </p>
           <p className="mt-2 text-sm italic" style={{ color: "#8a7a5a" }}>
             {tab === "draft"
               ? "All caught up! The girls are working on tomorrow's briefings."
@@ -305,7 +397,7 @@ export function VillageSquare() {
         tab === "archive" &&
         archiveGroups.map((group) => {
           const meta = GIRL_META[group.agent] ?? {
-            emoji: "🌿",
+            emoji: "\u{1F33F}",
             color: "#56823c",
             name: group.agent,
           };
@@ -343,6 +435,90 @@ export function VillageSquare() {
             </div>
           );
         })}
+
+      {tab === "chimes" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+          {loadingChimes && (
+            <p className="text-center text-sm italic" style={{ color: "#8a7a5a" }}>
+              {"\u{1F33F} Loading chimes\u2026"}
+            </p>
+          )}
+          {!loadingChimes && chimes.length === 0 && (
+            <div className="text-center py-8">
+              <p style={{ fontSize: "2rem" }}>{"\u{1F338}"}</p>
+              <p className="mt-2 text-sm italic" style={{ color: "#8a7a5a" }}>
+                {
+                  "No chimes yet \u2014 the girls will start talking after the next briefing!"
+                }
+              </p>
+            </div>
+          )}
+          {!loadingChimes &&
+            chimes.map((c) => {
+              const from = GIRL_META[c.from_agent] ?? {
+                emoji: "\u{1F33F}",
+                color: "#56823c",
+                name: c.from_agent,
+              };
+              const to = GIRL_META[c.to_agent] ?? {
+                emoji: "\u{1F33F}",
+                color: "#56823c",
+                name: c.to_agent,
+              };
+              return (
+                <div
+                  key={c.id}
+                  style={{
+                    background: "rgba(255,255,255,0.7)",
+                    border: "1px solid rgba(139,109,56,0.2)",
+                    borderRadius: "14px",
+                    padding: "0.75rem 1rem",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "0.4rem",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.4rem",
+                      fontSize: "0.75rem",
+                    }}
+                  >
+                    <span>{from.emoji}</span>
+                    <span style={{ fontWeight: 700, color: from.color }}>{from.name}</span>
+                    <span style={{ color: "#a09070" }}>{"\u2192"}</span>
+                    <span>{to.emoji}</span>
+                    <span style={{ fontWeight: 700, color: to.color }}>{to.name}</span>
+                    <span
+                      style={{
+                        marginLeft: "auto",
+                        color: "#a09070",
+                        fontSize: "0.65rem",
+                      }}
+                    >
+                      {new Date(c.created_at).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </span>
+                  </div>
+                  <p
+                    style={{
+                      fontSize: "0.85rem",
+                      color: "#3d3020",
+                      lineHeight: "1.6",
+                      margin: 0,
+                    }}
+                  >
+                    {c.message}
+                  </p>
+                </div>
+              );
+            })}
+        </div>
+      )}
     </div>
   );
 }
