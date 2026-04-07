@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { completeWithSearch, type ChatTurn } from "@/lib/anthropic";
 import { buildAgentSystemPrompt } from "@/lib/agents";
 import { completeConversation, type ChatTurn } from "@/lib/anthropic";
 import { getErrorMessage } from "@/lib/errors";
@@ -129,10 +130,10 @@ export async function POST(request: Request) {
       const base = buildAgentSystemPrompt(agent, meta.location);
       const system = memoryBlock ? `${base}\n\n${memoryBlock}` : base;
 
-      reply = await completeConversation({
-        system,
-        messages: anthropicMessages,
-      });
+      reply = await completeWithSearch({
+  system,
+  messages: anthropicMessages,
+});
     }
 
     await logConversationMessage({
