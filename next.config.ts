@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  /** CJS SDK expects Node `__dirname`; bundling it for serverless can throw. */
+  serverExternalPackages: ["@anthropic-ai/sdk"],
   async rewrites() {
     const cozy = "/assets/fernhollow/cozy-people";
     return [

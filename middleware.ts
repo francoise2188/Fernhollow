@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import {
-  FERNHOLLOW_AUTH_COOKIE,
-  FERNHOLLOW_AUTH_VALUE,
-} from "./lib/auth-constants";
+
+/** Keep in sync with lib/auth-constants.ts — inlined so Edge middleware has no extra imports. */
+const FERNHOLLOW_AUTH_COOKIE = "fernhollow_auth";
+const FERNHOLLOW_AUTH_VALUE = "1";
 
 /**
  * Old bundles request these `.mp3` paths; real files are `.wav` / `.m4a` (see lib/assets.ts).
