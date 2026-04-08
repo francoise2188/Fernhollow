@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { ActivityFeed } from "@/components/ActivityFeed";
 import { FernhollowGame } from "@/components/FernhollowGame";
 import { GameChatOverlay } from "@/components/GameChatOverlay";
 import { LogoutButton } from "@/components/LogoutButton";
@@ -68,6 +69,11 @@ export function FernhollowGameShell() {
           briefingContext={briefingContext}
         />
       ) : null}
+
+      <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-[57]">
+        <ActivityFeed />
+      </div>
+
       <div className="pointer-events-none absolute inset-0 z-[58]">
         <div className="pointer-events-auto absolute top-4 right-4 flex gap-2">
           <LogoutButton />

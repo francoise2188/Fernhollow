@@ -44,6 +44,43 @@ function patternHintFromMessage(message: string): "pattern" | undefined {
     : undefined;
 }
 
+function messageNeedsWebSearch(message: string): boolean {
+  const searchTriggers = [
+    "trending",
+    "latest",
+    "current",
+    "right now",
+    "today",
+    "this week",
+    "this month",
+    "recent",
+    "news",
+    "research",
+    "find",
+    "search",
+    "look up",
+    "what's happening",
+    "stats",
+    "data",
+    "numbers",
+    "how much",
+    "how many",
+    "price",
+    "compare",
+    "competition",
+    "competitor",
+    "market",
+    "2025",
+    "2026",
+    "april",
+    "january",
+    "february",
+    "march",
+  ];
+  const lower = message.toLowerCase();
+  return searchTriggers.some((trigger) => lower.includes(trigger));
+}
+
 export async function GET(request: Request) {
   const authed = await readAuthFromCookies();
   if (!authed) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -148,10 +185,10 @@ export async function POST(request: Request) {
         ? `${systemWithContext}\n\n${memoryBlock}`
         : systemWithContext;
 
-      reply = await completeWithSearch({
-        system,
-        messages: anthropicMessages,
-      });
+      const needsSearch = messageNeedsWebSearch(message);
+      reply = needsSearch
+        ? await completeWithSearch({ system, messages: anthropicMessages })
+        : await completeConversation({ system, messages: anthropicMessages });
     }
 
     await logConversationMessage({

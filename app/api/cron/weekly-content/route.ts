@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getBaseSystemPrompt } from "@/lib/agents";
-import { completeConversation } from "@/lib/anthropic";
+import { completeWithSearch } from "@/lib/anthropic";
 import { verifyCronRequest } from "@/lib/cron-auth";
 import { getErrorMessage } from "@/lib/errors";
 import { completeTask, failTask, startTask } from "@/lib/fernhollow-tasks";
@@ -62,7 +62,7 @@ You are running the weekly content batch for Fernhollow. Produce draft ideas for
 
 No bullet lists. No em-dashes. Plain language.`;
 
-    const raw = await completeConversation({
+    const raw = await completeWithSearch({
       system,
       messages: [
         {

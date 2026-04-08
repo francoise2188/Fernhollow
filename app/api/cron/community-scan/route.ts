@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getBaseSystemPrompt } from "@/lib/agents";
-import { completeConversation } from "@/lib/anthropic";
+import { completeWithHaiku } from "@/lib/anthropic";
 import { verifyCronRequest } from "@/lib/cron-auth";
 import { getErrorMessage } from "@/lib/errors";
 import { completeTask, failTask, startTask } from "@/lib/fernhollow-tasks";
@@ -34,7 +34,7 @@ export async function GET(request: Request) {
 
 You are drafting a weekly community scan note for Frankie's PrintBooth / vendor world. Facebook group API is not connected yet, so you cannot see live posts. Instead: name 4-6 recurring question themes vendors usually ask (pricing, paper, setup, magnets, events, software), and one practical suggestion for Frankie to answer or pin this week. Short. No bullet lists. No em-dashes. Plain language.`;
 
-    const note = await completeConversation({
+    const note = await completeWithHaiku({
       system,
       messages: [
         {
@@ -43,7 +43,7 @@ You are drafting a weekly community scan note for Frankie's PrintBooth / vendor 
             "Write this week's community scan draft for Frankie to review before posting.",
         },
       ],
-      maxTokens: 650,
+      maxTokens: 400,
     });
 
     const supabase = getSupabaseAdmin();
