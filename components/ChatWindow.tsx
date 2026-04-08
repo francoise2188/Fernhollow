@@ -5,6 +5,11 @@ import type { LocationSlug } from "@/lib/locations";
 
 type Row = { role: string; content: string };
 
+function safeImageUrl(url: string): string | null {
+  if (!url.startsWith("https://")) return null;
+  return url;
+}
+
 /** Same markup on server and first client paint to avoid hydration mismatches. */
 function ChatSkeleton() {
   return (
@@ -196,7 +201,66 @@ function ChatWindowInner({
                   : "mr-8 rounded-2xl rounded-bl-sm bg-stone-100 px-4 py-3 text-stone-800 dark:bg-stone-800 dark:text-stone-100"
             }
           >
-            <span className="whitespace-pre-wrap">{m.content}</span>
+            {m.content.includes("![") ? (
+              <div>
+                {m.content.split(/!\[([^\]]*)\]\(([^)]+)\)/).map((part, idx) => {
+                  if (idx % 3 === 0) {
+                    return (
+                      <span key={idx} className="whitespace-pre-wrap">
+                        {part}
+                      </span>
+                    );
+                  }
+                  if (idx % 3 === 2) {
+                    const safeUrl = safeImageUrl(part);
+                    if (!safeUrl) {
+                      return (
+                        <span key={idx} className="whitespace-pre-wrap">
+                          {`[image blocked: invalid url] ${part}`}
+                        </span>
+                      );
+                    }
+                    return (
+                      <span
+                        key={idx}
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "0.35rem",
+                          marginTop: "0.5rem",
+                        }}
+                      >
+                        <img
+                          src={safeUrl}
+                          alt="Generated design"
+                          style={{
+                            maxWidth: "100%",
+                            borderRadius: "8px",
+                            border: "1px solid rgba(139,109,56,0.2)",
+                          }}
+                        />
+                        <a
+                          href={safeUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            fontSize: "0.75rem",
+                            color: "#56823c",
+                            textDecoration: "underline",
+                            width: "fit-content",
+                          }}
+                        >
+                          Open image
+                        </a>
+                      </span>
+                    );
+                  }
+                  return null;
+                })}
+              </div>
+            ) : (
+              <span className="whitespace-pre-wrap">{m.content}</span>
+            )}
           </div>
         ))}
         {loading && (

@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { readAuthFromCookies } from "@/lib/auth";
 import {
   completeConversation,
+  completeWithTools,
   completeWithSearch,
   type ChatTurn,
 } from "@/lib/anthropic";
 import { buildAgentSystemPrompt } from "@/lib/agents";
 import { getErrorMessage } from "@/lib/errors";
+import { generateImage, imageToContentRow } from "@/lib/image-gen";
 import {
   formatMemoriesForPrompt,
   fetchRelevantMemories,
@@ -18,8 +20,11 @@ import type { FernhollowAgent } from "@/lib/fernhollow-memory";
 import { composeVillageSquareReply } from "@/lib/village-chime";
 import { isLocationSlug, LOCATIONS } from "@/lib/locations";
 import type { LocationSlug } from "@/lib/locations";
+import { getSupabaseAdmin } from "@/lib/supabase";
 
 export const runtime = "nodejs";
+const WREN_IMAGE_COOLDOWN_MS = 15_000;
+const wrenImageCooldownBySession = new Map<string, number>();
 
 function toAnthropicMessages(
   rows: Array<{ role: string; content: string }>,
@@ -185,10 +190,78 @@ export async function POST(request: Request) {
         ? `${systemWithContext}\n\n${memoryBlock}`
         : systemWithContext;
 
-      const needsSearch = messageNeedsWebSearch(message);
-      reply = needsSearch
-        ? await completeWithSearch({ system, messages: anthropicMessages })
-        : await completeConversation({ system, messages: anthropicMessages });
+      if (agent === "wren") {
+        const toolAwareSystem = `${system}
+
+TOOL POLICY FOR IMAGE REQUESTS:
+If Frankie asks you to generate, create, make, design, mockup, or produce an image/template right now, you MUST call the generate_image tool.
+Never claim an image was generated unless the tool result explicitly confirms success and provides a URL.`;
+        reply = await completeWithTools({
+          system: toolAwareSystem,
+          messages: anthropicMessages,
+          onToolUse: async (toolName, toolInput) => {
+            if (toolName === "generate_image") {
+              try {
+                const now = Date.now();
+                const last = wrenImageCooldownBySession.get(sessionId) ?? 0;
+                const remaining = WREN_IMAGE_COOLDOWN_MS - (now - last);
+                if (remaining > 0) {
+                  return `Image generation is cooling down. Please wait about ${Math.ceil(remaining / 1000)}s before generating another image.`;
+                }
+                const prompt =
+                  typeof toolInput.prompt === "string" ? toolInput.prompt : "";
+                if (!prompt.trim()) {
+                  return "Image generation failed: missing prompt.";
+                }
+                const width =
+                  typeof toolInput.width === "number" ? toolInput.width : 1024;
+                const height =
+                  typeof toolInput.height === "number" ? toolInput.height : 1024;
+                const business =
+                  typeof toolInput.business === "string"
+                    ? toolInput.business
+                    : "fernhollow";
+
+                const images = await generateImage({
+                  prompt,
+                  width,
+                  height,
+                  numImages: 1,
+                });
+
+                const image = images[0];
+                if (!image) return "Image generation failed — no image returned.";
+
+                const supabase = getSupabaseAdmin();
+                const row = imageToContentRow({
+                  agent: "wren",
+                  business,
+                  imageUrl: image.url,
+                  prompt,
+                  platform: "etsy",
+                });
+
+                const { data } = await supabase
+                  .from("fernhollow_content")
+                  .insert(row)
+                  .select("id")
+                  .single();
+                wrenImageCooldownBySession.set(sessionId, now);
+
+                return `Image generated successfully! Saved to your village square for approval.\n\n![Generated design](${image.url})\n\nContent ID: ${data?.id ?? "unknown"}. The image is ready to review!`;
+              } catch (e) {
+                return `Image generation failed: ${e instanceof Error ? e.message : "Unknown error"}`;
+              }
+            }
+            return "Unknown tool.";
+          },
+        });
+      } else {
+        const needsSearch = messageNeedsWebSearch(message);
+        reply = needsSearch
+          ? await completeWithSearch({ system, messages: anthropicMessages })
+          : await completeConversation({ system, messages: anthropicMessages });
+      }
     }
 
     await logConversationMessage({

@@ -133,17 +133,74 @@ function BriefingCard({
       </div>
 
       <div style={{ padding: "0.85rem 1rem" }}>
-        <p
-          style={{
-            fontSize: "0.85rem",
-            color: "#3d3020",
-            lineHeight: "1.65",
-            whiteSpace: "pre-wrap",
-            margin: 0,
-          }}
-        >
-          {briefing.content}
-        </p>
+        {briefing.content_type === "image" ? (
+          (() => {
+            try {
+              const parsed = JSON.parse(briefing.content) as {
+                imageUrl: string;
+                prompt: string;
+              };
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                  <img
+                    src={parsed.imageUrl}
+                    alt="Generated design"
+                    style={{
+                      width: "100%",
+                      borderRadius: "8px",
+                      border: "1px solid rgba(139,109,56,0.2)",
+                    }}
+                  />
+                  <p
+                    style={{
+                      fontSize: "0.75rem",
+                      color: "#8a7a5a",
+                      margin: 0,
+                      fontStyle: "italic",
+                    }}
+                  >
+                    {parsed.prompt
+                      ? parsed.prompt.length > 120
+                        ? `${parsed.prompt.slice(0, 120)}...`
+                        : parsed.prompt
+                      : ""}
+                  </p>
+                  <a
+                    href={parsed.imageUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      fontSize: "0.75rem",
+                      color: "#56823c",
+                      textDecoration: "underline",
+                      width: "fit-content",
+                    }}
+                  >
+                    Open image
+                  </a>
+                </div>
+              );
+            } catch {
+              return (
+                <p style={{ fontSize: "0.85rem", color: "#3d3020", margin: 0 }}>
+                  {briefing.content}
+                </p>
+              );
+            }
+          })()
+        ) : (
+          <p
+            style={{
+              fontSize: "0.85rem",
+              color: "#3d3020",
+              lineHeight: "1.65",
+              whiteSpace: "pre-wrap",
+              margin: 0,
+            }}
+          >
+            {briefing.content}
+          </p>
+        )}
       </div>
 
       {!isArchive && (

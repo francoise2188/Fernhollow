@@ -8,6 +8,24 @@ import { getErrorMessage } from "@/lib/errors";
 const DEFAULT_MODEL = "claude-sonnet-4-20250514";
 
 export type ChatTurn = { role: "user" | "assistant"; content: string };
+export type ImageTool = {
+  type: "custom";
+  name: "generate_image";
+  description: string;
+  input_schema: object;
+};
+
+export type ToolUseBlock = {
+  type: "tool_use";
+  id: string;
+  name: string;
+  input: Record<string, unknown>;
+};
+
+export type TextBlock = {
+  type: "text";
+  text: string;
+};
 
 function normalizeApiKey(raw: string): string {
   return raw.replace(/\r/g, "").replace(/\n/g, "").trim();
@@ -132,4 +150,134 @@ export async function completeWithHaiku(input: {
   const block = response.content[0];
   if (!block || block.type !== "text") throw new Error("Unexpected response");
   return block.text;
+}
+
+/**
+ * Chat with tool-use support for image generation.
+ * Handles the full tool-use loop automatically.
+ */
+export async function completeWithTools(input: {
+  system: string;
+  messages: ChatTurn[];
+  maxTokens?: number;
+  onToolUse?: (
+    name: string,
+    toolInput: Record<string, unknown>,
+  ) => Promise<string>;
+}): Promise<string> {
+  const key = normalizeApiKey(process.env.ANTHROPIC_API_KEY ?? "");
+  if (!key) throw new Error("Missing ANTHROPIC_API_KEY");
+
+  const model = (process.env.ANTHROPIC_MODEL ?? DEFAULT_MODEL)
+    .replace(/\r/g, "")
+    .trim();
+
+  const client = new Anthropic({ apiKey: key });
+
+  const tools: Anthropic.Tool[] = [
+    {
+      type: "custom",
+      name: "generate_image",
+      description:
+        "Generate an image using AI. Use this when Frankie asks you to create a design, mockup, or visual. Always describe what you're generating before calling this tool. Each image costs approximately $0.01.",
+      input_schema: {
+        type: "object" as const,
+        properties: {
+          prompt: {
+            type: "string",
+            description:
+              "Detailed description of the image to generate. Be specific about style, colors, layout, and content.",
+          },
+          width: {
+            type: "number",
+            description:
+              "Image width in pixels. Default 1024. Use 1024x1024 for square, 1024x1200 for portrait.",
+          },
+          height: {
+            type: "number",
+            description: "Image height in pixels. Default 1024.",
+          },
+          productType: {
+            type: "string",
+            description:
+              "Type of product (e.g. 'pricing template', 'social media template', 'logo').",
+          },
+          business: {
+            type: "string",
+            description:
+              "Which business this is for: blirt, printbooth, saudade, or fernhollow (for Wren's own products).",
+          },
+        },
+        required: ["prompt", "productType"],
+      },
+    } as Anthropic.Tool,
+  ];
+
+  const response = await client.messages.create({
+    model,
+    max_tokens: input.maxTokens ?? 1024,
+    system: input.system,
+    messages: input.messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    })),
+    tools,
+  });
+
+  const toolUseBlock = response.content.find(
+    (block): block is Anthropic.ToolUseBlock => block.type === "tool_use",
+  );
+
+  if (!toolUseBlock || !input.onToolUse) {
+    const text = response.content
+      .filter((b): b is Anthropic.TextBlock => b.type === "text")
+      .map((b) => b.text)
+      .join("\n\n");
+    return text || "I'm not sure what to say here.";
+  }
+
+  const toolResult = await input.onToolUse(
+    toolUseBlock.name,
+    toolUseBlock.input as Record<string, unknown>,
+  );
+
+  const preText = response.content
+    .filter((b): b is Anthropic.TextBlock => b.type === "text")
+    .map((b) => b.text)
+    .join("\n\n");
+
+  const followUp = await client.messages.create({
+    model,
+    max_tokens: input.maxTokens ?? 1024,
+    system: input.system,
+    messages: [
+      ...input.messages.map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      })),
+      {
+        role: "assistant" as const,
+        content: response.content,
+      },
+      {
+        role: "user" as const,
+        content: [
+          {
+            type: "tool_result" as const,
+            tool_use_id: toolUseBlock.id,
+            content: toolResult,
+          },
+        ],
+      },
+    ],
+    tools,
+  });
+
+  const followUpText = followUp.content
+    .filter((b): b is Anthropic.TextBlock => b.type === "text")
+    .map((b) => b.text)
+    .join("\n\n");
+
+  // Keep real tool output visible so chat UI can render markdown image links.
+  return [preText, followUpText, toolResult].filter(Boolean).join("\n\n");
 }
