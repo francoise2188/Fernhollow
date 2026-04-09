@@ -1846,6 +1846,217 @@ export function FernhollowGame({
           };
           this.time.delayedCall(1400, roamWren);
 
+          // ── Speech bubbles (latest chime above sender) ─────────────────────
+          const BUBBLE_COLORS: Record<string, number> = {
+            clover: 0x56823c,
+            rosie: 0xc4687a,
+            scout: 0x7a6a3a,
+            wren: 0x4a7a8a,
+          };
+
+          const girlContainers: Record<string, Phaser.GameObjects.Container> = {
+            clover: cloverContainer,
+            rosie: rosieContainer,
+            scout: scoutContainer,
+            wren: wrenContainer,
+          };
+
+          let lastChimeId: string | null = null;
+
+          /** Light cream-green panel; per-girl color is border accent only. */
+          const BUBBLE_FILL = 0xe8f2e0;
+
+          const showSpeechBubble = (
+            container: Phaser.GameObjects.Container,
+            fullMessage: string,
+            accentColor: number,
+          ) => {
+            const maxWidthCompact = 128;
+            const maxWidthExpanded = 224;
+            const padding = 6;
+            const spriteHalfH = (32 * mapScale * 2) / 2;
+
+            const previewText =
+              fullMessage.length > 48
+                ? `${fullMessage.slice(0, 45)}...`
+                : fullMessage;
+
+            const label = this.add.text(0, 0, previewText, {
+              fontSize: "11px",
+              fontFamily: "Nunito, sans-serif",
+              fontStyle: "bold",
+              color: "#1a1816",
+              wordWrap: { width: maxWidthCompact - padding * 2 },
+              align: "left",
+              resolution: 3,
+              stroke: "#f5faf4",
+              strokeThickness: 2,
+            });
+
+            const bg = this.add.graphics();
+
+            const drawBubble = (bw: number, bh: number) => {
+              bg.clear();
+              bg.fillStyle(0x2d3d28, 0.12);
+              bg.fillRoundedRect(1, 1, bw, bh, 6);
+              bg.fillStyle(BUBBLE_FILL, 0.96);
+              bg.fillRoundedRect(0, 0, bw, bh, 6);
+              bg.lineStyle(1, accentColor, 0.85);
+              bg.strokeRoundedRect(0, 0, bw, bh, 6);
+              bg.fillStyle(BUBBLE_FILL, 0.96);
+              bg.fillTriangle(
+                bw / 2 - 4,
+                bh,
+                bw / 2 + 4,
+                bh,
+                bw / 2,
+                bh + 5,
+              );
+            };
+
+            let bw = Math.min(label.width + padding * 2, maxWidthCompact);
+            let bh = label.height + padding * 2;
+            drawBubble(bw, bh);
+            label.setPosition(padding, padding);
+
+            const bubbleContainer = this.add.container(0, 0, [bg, label]);
+            let expanded = false;
+
+            /** Keep bubble + tail inside the tiled map (not over the green border). */
+            const mapPad = 6;
+            const tailBelow = 8;
+            const mapLeft = offsetX + mapPad;
+            const mapRight =
+              offsetX + map.widthInPixels * mapScale - mapPad;
+            const mapTop = offsetY + mapPad;
+            const mapBottom =
+              offsetY + map.heightInPixels * mapScale - mapPad;
+
+            const positionBubble = (w: number, h: number) => {
+              let x = container.x - w / 2;
+              let y = container.y - spriteHalfH - h - 12;
+              const minX = mapLeft;
+              const maxX = mapRight - w;
+              const minY = mapTop;
+              const maxY = mapBottom - h - tailBelow;
+              if (maxX >= minX) {
+                x = Phaser.Math.Clamp(x, minX, maxX);
+              } else {
+                x = minX;
+              }
+              if (maxY >= minY) {
+                y = Phaser.Math.Clamp(y, minY, maxY);
+              } else {
+                y = minY;
+              }
+              bubbleContainer.setPosition(x, y);
+            };
+            positionBubble(bw, bh);
+
+            bubbleContainer.setDepth(100);
+
+            const tailPad = 8;
+            const setHitArea = (w: number, h: number) => {
+              const hit = bubbleContainer.input?.hitArea as
+                | Phaser.Geom.Rectangle
+                | undefined;
+              if (hit) {
+                hit.setSize(w, h + tailPad);
+              } else {
+                bubbleContainer.setInteractive(
+                  new Phaser.Geom.Rectangle(0, 0, w, h + tailPad),
+                  Phaser.Geom.Rectangle.Contains,
+                );
+                bubbleContainer.input!.cursor = "pointer";
+              }
+            };
+            setHitArea(bw, bh);
+
+            let fadeTimer: Phaser.Time.TimerEvent | null = null;
+            const clearFade = () => {
+              if (fadeTimer) {
+                fadeTimer.remove(false);
+                fadeTimer = null;
+              }
+            };
+            const scheduleFade = (ms: number) => {
+              clearFade();
+              fadeTimer = this.time.delayedCall(ms, () => {
+                this.tweens.add({
+                  targets: bubbleContainer,
+                  alpha: 0,
+                  duration: 500,
+                  ease: "Power2",
+                  onComplete: () => {
+                    clearFade();
+                    bubbleContainer.destroy();
+                  },
+                });
+              });
+            };
+
+            bubbleContainer.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+              pointer.event?.stopPropagation?.();
+              pointer.event?.preventDefault?.();
+              if (expanded) return;
+              expanded = true;
+              label.setText(fullMessage);
+              label.setWordWrapWidth(maxWidthExpanded - padding * 2, true);
+              label.setFontSize("10px");
+              bw = Math.min(label.width + padding * 2, maxWidthExpanded);
+              bh = label.height + padding * 2;
+              drawBubble(bw, bh);
+              label.setPosition(padding, padding);
+              positionBubble(bw, bh);
+              setHitArea(bw, bh);
+              scheduleFade(10000);
+            });
+
+            bubbleContainer.setAlpha(0);
+            this.tweens.add({
+              targets: bubbleContainer,
+              alpha: 1,
+              duration: 250,
+              ease: "Power2",
+            });
+
+            scheduleFade(4000);
+          };
+
+          const pollLatestChime = () => {
+            fetch("/api/chimes?limit=1", { credentials: "include" })
+              .then((r) => r.json())
+              .then(
+                (d: {
+                  chimes?: Array<{
+                    id: string;
+                    from_agent: string;
+                    message: string;
+                  }>;
+                }) => {
+                  const latest = d.chimes?.[0];
+                  if (!latest || latest.id === lastChimeId) return;
+                  lastChimeId = latest.id;
+
+                  const container = girlContainers[latest.from_agent];
+                  if (!container) return;
+
+                  const color =
+                    BUBBLE_COLORS[latest.from_agent] ?? 0x56823c;
+                  showSpeechBubble(container, latest.message, color);
+                },
+              )
+              .catch(() => {});
+          };
+
+          this.time.addEvent({
+            delay: 12000,
+            loop: true,
+            callback: pollLatestChime,
+          });
+
+          this.time.delayedCall(3000, pollLatestChime);
+
           const sw = map.widthInPixels * mapScale;
           const sh = map.heightInPixels * mapScale;
           const cam = this.cameras.main;
