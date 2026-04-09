@@ -1,16 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { getErrorMessage } from "@/lib/errors";
-
-/** Avoid static import cycles; logging runs after this module finishes loading. */
-function scheduleAnthropicMessageUsage(input: {
-  model: string;
-  operation: string;
-  usage: { input_tokens?: number; output_tokens?: number } | undefined;
-}): void {
-  void import("@/lib/usage-log").then((m) => {
-    void m.logAnthropicMessageUsage(input);
-  });
-}
+import { scheduleAnthropicMessageUsage } from "@/lib/anthropic-usage-log";
 
 const WEB_SEARCH_TOOL: Anthropic.Tool = {
   type: "web_search_20250305",
@@ -82,7 +72,7 @@ export async function completeConversation(input: {
 
     scheduleAnthropicMessageUsage({
       model,
-      operation: "completeConversation",
+      operation: "anthropic_chat",
       usage: response.usage,
     });
 

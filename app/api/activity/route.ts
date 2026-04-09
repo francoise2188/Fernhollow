@@ -23,10 +23,15 @@ export async function GET() {
     return true;
   });
 
+  const failureSince = new Date(
+    Date.now() - 7 * 24 * 60 * 60 * 1000,
+  ).toISOString();
+
   const { data: failedRows } = await supabase
     .from("fernhollow_tasks")
     .select("id, agent, task_type, status, run_at, completed_at, output")
     .eq("status", "failed")
+    .gte("completed_at", failureSince)
     .order("completed_at", { ascending: false })
     .limit(12);
 
