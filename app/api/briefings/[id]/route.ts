@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { readAuthFromCookies } from "@/lib/auth";
+import { triggerContentPipeline } from "@/lib/content-pipeline";
 import { getSupabaseAdmin } from "@/lib/supabase";
 
 export async function PATCH(
@@ -10,20 +11,18 @@ export async function PATCH(
   if (!authed) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const body = (await request.json().catch(() => null)) as Record<
-    string,
-    unknown
-  > | null;
+  const body = await request.json().catch(() => null) as {
+    status?: string;
+    note?: string | null;
+    stopSuggesting?: boolean;
+  } | null;
   if (!body) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const status = body.status;
-  const note = typeof body.note === "string" ? body.note : undefined;
-  const stopSuggesting =
-    typeof body.stopSuggesting === "boolean" ? body.stopSuggesting : false;
+  const { status, note, stopSuggesting } = body;
 
-  if (!["approved", "dismissed"].includes(status as string)) {
+  if (!status || !["approved", "dismissed"].includes(status)) {
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
   }
 
@@ -33,7 +32,7 @@ export async function PATCH(
     .from("fernhollow_content")
     .update({ status: status as "approved" | "dismissed" })
     .eq("id", id)
-    .select("agent, content_type, business")
+    .select("id, agent, content_type, business, content")
     .single();
 
   if (updateError) {
@@ -51,6 +50,11 @@ export async function PATCH(
   });
 
   if (feedbackError) console.error("Feedback save error:", feedbackError);
+
+  // Only morning briefings (email) should spawn follow-up drafts; not images or pipeline outputs.
+  if (status === "approved" && briefing.content_type === "email") {
+    void triggerContentPipeline(briefing);
+  }
 
   return NextResponse.json({ ok: true });
 }

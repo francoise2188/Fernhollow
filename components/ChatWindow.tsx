@@ -1,9 +1,45 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import type { LocationSlug } from "@/lib/locations";
 
 type Row = { role: string; content: string };
+
+/** Quick-pick emoji for chat — tap to insert at the cursor (or at the end). */
+const CHAT_QUICK_EMOJIS = [
+  "😊",
+  "🥰",
+  "😂",
+  "🙌",
+  "💛",
+  "✨",
+  "🌿",
+  "🍄",
+  "🌸",
+  "🌼",
+  "☕",
+  "💌",
+  "🎉",
+  "💪",
+  "🫶",
+  "👏",
+  "👍",
+  "✅",
+  "💭",
+  "🔥",
+  "🙏",
+  "💫",
+  "🌙",
+  "🦋",
+  "🍵",
+  "🤍",
+] as const;
 
 function safeImageUrl(url: string): string | null {
   if (!url.startsWith("https://")) return null;
@@ -43,6 +79,8 @@ function ChatWindowInner({
   briefingContext?: string;
 }) {
   const hasSentInitial = useRef(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const selectionAfterEmoji = useRef<number | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Row[]>([]);
   const [input, setInput] = useState("");
@@ -55,13 +93,28 @@ function ChatWindowInner({
   }, [slug, initialMessage, briefingContext]);
 
   useEffect(() => {
-    const key = `fh_session_${slug}`;
-    let id = sessionStorage.getItem(key);
-    if (!id) {
-      id = crypto.randomUUID();
-      sessionStorage.setItem(key, id);
-    }
-    setSessionId(id);
+    let cancelled = false;
+    fetch(`/api/session?slug=${encodeURIComponent(slug)}`, {
+      credentials: "same-origin",
+    })
+      .then((r) => r.json())
+      .then((d: { sessionId?: string; error?: string }) => {
+        if (!cancelled && d.sessionId) {
+          setSessionId(d.sessionId);
+        }
+      })
+      .catch(() => {
+        const key = `fh_session_${slug}`;
+        let id = sessionStorage.getItem(key);
+        if (!id) {
+          id = crypto.randomUUID();
+          sessionStorage.setItem(key, id);
+        }
+        if (!cancelled) setSessionId(id);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [slug]);
 
   useEffect(() => {
@@ -142,6 +195,33 @@ function ChatWindowInner({
     if (!text) return;
     await sendText(text);
   }, [input, sendText]);
+
+  const insertEmoji = useCallback(
+    (emoji: string) => {
+      const el = textareaRef.current;
+      if (el && document.activeElement === el) {
+        const start = el.selectionStart ?? input.length;
+        const end = el.selectionEnd ?? input.length;
+        const next = input.slice(0, start) + emoji + input.slice(end);
+        selectionAfterEmoji.current = start + emoji.length;
+        setInput(next);
+      } else {
+        setInput((prev) => prev + emoji);
+        selectionAfterEmoji.current = null;
+      }
+      requestAnimationFrame(() => textareaRef.current?.focus());
+    },
+    [input],
+  );
+
+  useLayoutEffect(() => {
+    if (selectionAfterEmoji.current == null || !textareaRef.current) return;
+    const pos = selectionAfterEmoji.current;
+    selectionAfterEmoji.current = null;
+    const ta = textareaRef.current;
+    ta.setSelectionRange(pos, pos);
+    ta.focus();
+  }, [input]);
 
   useEffect(() => {
     if (
@@ -328,24 +408,49 @@ function ChatWindowInner({
             : "flex gap-2 border-t border-stone-200 p-3 dark:border-stone-700"
         }
       >
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              void send();
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                void send();
+              }
+            }}
+            rows={2}
+            placeholder="Say something…"
+            className={
+              variant === "dialogue"
+                ? "min-h-[44px] w-full resize-none rounded-xl border border-amber-900/20 bg-white/80 px-3 py-2 text-stone-800 placeholder:text-stone-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-[Nunito,sans-serif]"
+                : "min-h-[44px] w-full resize-none rounded-xl border border-stone-200 bg-white px-3 py-2 text-stone-900 placeholder:text-stone-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-stone-600 dark:bg-stone-950 dark:text-stone-50"
             }
-          }}
-          rows={2}
-          placeholder="Say something…"
-          className={
-            variant === "dialogue"
-              ? "min-h-[44px] flex-1 resize-none rounded-xl border border-amber-900/20 bg-white/80 px-3 py-2 text-stone-800 placeholder:text-stone-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-[Nunito,sans-serif]"
-              : "min-h-[44px] flex-1 resize-none rounded-xl border border-stone-200 bg-white px-3 py-2 text-stone-900 placeholder:text-stone-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-stone-600 dark:bg-stone-950 dark:text-stone-50"
-          }
-          disabled={loading || !sessionId}
-        />
+            disabled={loading || !sessionId}
+          />
+          <div
+            className="flex max-h-[4.5rem] flex-wrap gap-1 overflow-y-auto sm:max-h-none"
+            role="group"
+            aria-label="Emoji quick picks"
+          >
+            {CHAT_QUICK_EMOJIS.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                disabled={loading || !sessionId}
+                title={`Add ${emoji}`}
+                onClick={() => insertEmoji(emoji)}
+                className={
+                  variant === "dialogue"
+                    ? "rounded-lg px-1.5 py-0.5 text-lg leading-none text-stone-700 transition hover:bg-amber-900/10 disabled:opacity-40"
+                    : "rounded-lg px-1.5 py-0.5 text-lg leading-none text-stone-700 transition hover:bg-stone-200 disabled:opacity-40 dark:text-stone-200 dark:hover:bg-stone-800"
+                }
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        </div>
         <button
           type="button"
           onClick={() => void send()}

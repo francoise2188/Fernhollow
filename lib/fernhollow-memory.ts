@@ -8,7 +8,8 @@ export type MemoryCategory =
   | "preference"
   | "business"
   | "personal"
-  | "pattern";
+  | "pattern"
+  | "recap";
 
 export type BusinessContext =
   | "blirt"

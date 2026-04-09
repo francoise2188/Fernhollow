@@ -4,6 +4,8 @@ import { useCallback, useEffect } from "react";
 import { ChatWindow } from "@/components/ChatWindow";
 import { GardenBoardClient } from "@/components/GardenBoardClient";
 import { TreasuryDashboard } from "@/components/TreasuryDashboard";
+import { useFernhollowToast } from "@/components/ToastProvider";
+import { UsageSummaryStrip } from "@/components/UsageSummaryStrip";
 import { VillageSquare } from "@/components/VillageSquare";
 import { LOCATIONS, type LocationSlug } from "@/lib/locations";
 
@@ -20,6 +22,7 @@ export function GameChatOverlay({
   initialMessage,
   briefingContext,
 }: Props) {
+  const { toast } = useFernhollowToast();
   const meta = LOCATIONS[slug];
 
   const onKey = useCallback(
@@ -126,6 +129,23 @@ export function GameChatOverlay({
           transform: scale(1.03);
         }
 
+        .fh-fresh-btn {
+          padding: 0.25rem 0.6rem;
+          border-radius: 20px;
+          border: 1px solid rgba(139,109,56,0.2);
+          background: transparent;
+          font-size: 0.65rem;
+          font-weight: 600;
+          color: #8a7a5a;
+          cursor: pointer;
+          font-family: 'Nunito', sans-serif;
+          flex-shrink: 0;
+        }
+
+        .fh-fresh-btn:hover {
+          background: rgba(255,255,255,0.5);
+        }
+
         .fh-body {
           position: relative;
           z-index: 1;
@@ -186,9 +206,65 @@ export function GameChatOverlay({
               </h2>
               <p className="fh-sublabel">{meta.shortLabel}</p>
             </div>
-            <button type="button" onClick={onClose} className="fh-close-btn">
-              ✦ Close
-            </button>
+            <div
+              style={{
+                display: "flex",
+                flexShrink: 0,
+                alignItems: "flex-start",
+                gap: "0.5rem",
+              }}
+            >
+              {meta.hasChat && slug !== "village-square" ? (
+                <button
+                  type="button"
+                  className="fh-fresh-btn"
+                  onClick={async () => {
+                    if (
+                      !confirm(
+                        `Save a recap of your chats with ${meta.shortLabel} and start a new thread?`,
+                      )
+                    ) {
+                      return;
+                    }
+                    try {
+                      const r = await fetch("/api/session/recap", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ slug }),
+                        credentials: "same-origin",
+                      });
+                      const data = (await r.json().catch(() => ({}))) as {
+                        error?: string;
+                      };
+                      if (!r.ok) {
+                        throw new Error(data.error ?? "Could not save recap.");
+                      }
+                      const del = await fetch(
+                        `/api/session?slug=${encodeURIComponent(slug)}`,
+                        { method: "DELETE", credentials: "same-origin" },
+                      );
+                      const delJson = (await del.json().catch(() => ({}))) as {
+                        error?: string;
+                      };
+                      if (!del.ok) {
+                        throw new Error(delJson.error ?? "Could not reset session.");
+                      }
+                      toast("Recap saved. Starting fresh…");
+                      window.location.reload();
+                    } catch (e) {
+                      toast(
+                        e instanceof Error ? e.message : "Something went wrong.",
+                      );
+                    }
+                  }}
+                >
+                  {"\u{1F33F} Fresh start"}
+                </button>
+              ) : null}
+              <button type="button" onClick={onClose} className="fh-close-btn">
+                ✦ Close
+              </button>
+            </div>
           </div>
           <div className="fh-body">
             {slug === "village-square" ? (
@@ -197,6 +273,9 @@ export function GameChatOverlay({
               <GardenBoardClient />
             ) : slug === "wrens-house" ? (
               <div className="space-y-6">
+                <div className="flex justify-end">
+                  <UsageSummaryStrip />
+                </div>
                 <TreasuryDashboard />
                 <ChatWindow
                   slug={slug}

@@ -1,6 +1,22 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { getErrorMessage } from "@/lib/errors";
 
+/** Avoid static import cycles; logging runs after this module finishes loading. */
+function scheduleAnthropicMessageUsage(input: {
+  model: string;
+  operation: string;
+  usage: { input_tokens?: number; output_tokens?: number } | undefined;
+}): void {
+  void import("@/lib/usage-log").then((m) => {
+    void m.logAnthropicMessageUsage(input);
+  });
+}
+
+const WEB_SEARCH_TOOL: Anthropic.Tool = {
+  type: "web_search_20250305",
+  name: "web_search",
+} as unknown as Anthropic.Tool;
+
 /**
  * Default: Claude Sonnet 4 (direct Anthropic API).
  * Older ids like claude-3-5-sonnet-20240620 may return 404 — use ANTHROPIC_MODEL to override.
@@ -64,6 +80,12 @@ export async function completeConversation(input: {
       })),
     });
 
+    scheduleAnthropicMessageUsage({
+      model,
+      operation: "completeConversation",
+      usage: response.usage,
+    });
+
     const block = response.content[0];
     if (!block || block.type !== "text") {
       throw new Error("Unexpected Anthropic response shape");
@@ -98,27 +120,54 @@ export async function completeWithSearch(input: {
 
   const client = new Anthropic({ apiKey: key });
 
-  const response = await client.messages.create({
+  const maxTokens = input.maxTokens ?? 4096;
+  const baseMessages: Anthropic.MessageParam[] = input.messages.map((m) => ({
+    role: m.role,
+    content: m.content,
+  }));
+
+  let messages: Anthropic.MessageParam[] = [...baseMessages];
+  let response = await client.messages.create({
     model,
-    max_tokens: input.maxTokens ?? 4096,
+    max_tokens: maxTokens,
     system: input.system,
-    messages: input.messages.map((m) => ({
-      role: m.role,
-      content: m.content,
-    })),
-    tools: [
-      {
-        type: "web_search_20250305",
-        name: "web_search",
-      } as unknown as Anthropic.Tool,
-    ],
+    messages,
+    tools: [WEB_SEARCH_TOOL],
   });
 
-  const text = response.content
-    .filter((block) => block.type === "text")
-    .map((block) => (block as Anthropic.TextBlock).text)
-    .join("\n\n");
+  const textChunks: string[] = [];
 
+  for (let round = 0; round < 12; round++) {
+    scheduleAnthropicMessageUsage({
+      model,
+      operation:
+        round === 0 ? "completeWithSearch" : `completeWithSearch_r${round}`,
+      usage: response.usage,
+    });
+
+    const chunk = response.content
+      .filter((block) => block.type === "text")
+      .map((block) => (block as Anthropic.TextBlock).text)
+      .join("\n\n");
+    if (chunk.trim()) textChunks.push(chunk);
+
+    if (response.stop_reason !== "pause_turn") break;
+
+    messages = [
+      ...messages,
+      { role: "assistant", content: response.content },
+    ];
+
+    response = await client.messages.create({
+      model,
+      max_tokens: maxTokens,
+      system: input.system,
+      messages,
+      tools: [WEB_SEARCH_TOOL],
+    });
+  }
+
+  const text = textChunks.join("\n\n").trim();
   if (!text) throw new Error("No text in Anthropic response");
   return text;
 }
@@ -137,14 +186,21 @@ export async function completeWithHaiku(input: {
 
   const client = new Anthropic({ apiKey: key });
 
+  const haikuModel = "claude-haiku-4-5-20251001";
   const response = await client.messages.create({
-    model: "claude-haiku-4-5-20251001",
+    model: haikuModel,
     max_tokens: input.maxTokens ?? 300,
     system: input.system,
     messages: input.messages.map((m) => ({
       role: m.role,
       content: m.content,
     })),
+  });
+
+  scheduleAnthropicMessageUsage({
+    model: haikuModel,
+    operation: "completeWithHaiku",
+    usage: response.usage,
   });
 
   const block = response.content[0];
@@ -224,6 +280,12 @@ export async function completeWithTools(input: {
     tools,
   });
 
+  scheduleAnthropicMessageUsage({
+    model,
+    operation: "completeWithTools_round1",
+    usage: response.usage,
+  });
+
   const toolUseBlock = response.content.find(
     (block): block is Anthropic.ToolUseBlock => block.type === "tool_use",
   );
@@ -271,6 +333,12 @@ export async function completeWithTools(input: {
       },
     ],
     tools,
+  });
+
+  scheduleAnthropicMessageUsage({
+    model,
+    operation: "completeWithTools_round2",
+    usage: followUp.usage,
   });
 
   const followUpText = followUp.content

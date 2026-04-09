@@ -1,5 +1,6 @@
 import { buildAgentSystemPrompt, getBaseSystemPrompt } from "@/lib/agents";
 import { completeConversation, type ChatTurn } from "@/lib/anthropic";
+import { getFrankieGlobalPromptBlock } from "@/lib/frankie-preferences";
 import {
   formatMemoriesForPrompt,
   fetchMemoriesForVillageSquare,
@@ -14,7 +15,9 @@ export async function composeVillageSquareReply(input: {
   anthropicMessages: ChatTurn[];
 }): Promise<string> {
   const memories = await fetchMemoriesForVillageSquare(10);
-  const memoryBlock = formatMemoriesForPrompt(memories);
+  const frankieBlock = await getFrankieGlobalPromptBlock();
+  const villageMemory = formatMemoriesForPrompt(memories);
+  const memoryBlock = [frankieBlock, villageMemory].filter(Boolean).join("\n\n");
 
   const cloverSystem = buildAgentSystemPrompt("clover", "village_square");
   const cloverFull = [

@@ -148,12 +148,16 @@ export async function GET(request: Request) {
         taskId,
       });
 
-      // Send chimes to relevant girls
-      await sendChimesForBriefing({
-        fromAgent: agent,
-        briefingContent: briefing,
-        sourceContentId: content.id as string,
-      });
+      // Chimes are best-effort — a chime failure should not mark the briefing as failed.
+      try {
+        await sendChimesForBriefing({
+          fromAgent: agent,
+          briefingContent: briefing,
+          sourceContentId: content.id as string,
+        });
+      } catch (chimeErr) {
+        console.error(`morning-briefing:${agent}:chimes`, chimeErr);
+      }
     } catch (e) {
       console.error(`morning-briefing:${agent}`, e);
       const msg = getErrorMessage(e);

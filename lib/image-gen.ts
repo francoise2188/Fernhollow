@@ -2,6 +2,7 @@
  * Image generation for Wren using fal.ai
  * Used to create Etsy product designs, templates, and mockups.
  */
+import { logFalImageUsage } from "@/lib/usage-log";
 
 const FAL_API_URL = "https://fal.run/fal-ai/flux/schnell";
 
@@ -49,6 +50,8 @@ export async function generateImage(
   const data = (await res.json()) as {
     images: { url: string; width: number; height: number }[];
   };
+
+  void logFalImageUsage({ operation: "flux_schnell_generate" });
 
   return data.images;
 }

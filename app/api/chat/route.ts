@@ -10,6 +10,10 @@ import { buildAgentSystemPrompt } from "@/lib/agents";
 import { getErrorMessage } from "@/lib/errors";
 import { generateImage, imageToContentRow } from "@/lib/image-gen";
 import {
+  getFrankieGlobalPromptBlock,
+  getRecapPromptBlockForAgent,
+} from "@/lib/frankie-preferences";
+import {
   formatMemoriesForPrompt,
   fetchRelevantMemories,
   logConversationMessage,
@@ -17,10 +21,20 @@ import {
   maybeSavePatternFromUserMessage,
 } from "@/lib/fernhollow-memory";
 import type { FernhollowAgent } from "@/lib/fernhollow-memory";
+import {
+  formatFeedbackForPrompt,
+  getFeedbackSummaryForAgent,
+} from "@/lib/fernhollow-feedback";
 import { composeVillageSquareReply } from "@/lib/village-chime";
 import { isLocationSlug, LOCATIONS } from "@/lib/locations";
 import type { LocationSlug } from "@/lib/locations";
 import { getSupabaseAdmin } from "@/lib/supabase";
+import {
+  currentMonthString,
+  formatUsd,
+  listTreasuryForMonth,
+  summarizeTreasury,
+} from "@/lib/treasury";
 
 export const runtime = "nodejs";
 const WREN_IMAGE_COOLDOWN_MS = 15_000;
@@ -175,20 +189,47 @@ export async function POST(request: Request) {
         anthropicMessages,
       });
     } else {
-      const memories = await fetchRelevantMemories({
+      const memoriesRaw = await fetchRelevantMemories({
         agent,
         business: meta.business ?? undefined,
         limit: 10,
         categoryHint: patternHintFromMessage(message),
       });
+      const memories = memoriesRaw.filter(
+        (m) => !String(m.key).startsWith("frankie_recap_"),
+      );
+      const frankieBlock = await getFrankieGlobalPromptBlock();
+      const recapBlock = await getRecapPromptBlockForAgent(agent);
       const memoryBlock = formatMemoriesForPrompt(memories);
+      const feedbackSummary = await getFeedbackSummaryForAgent(agent);
+      const feedbackBlock = formatFeedbackForPrompt(agent, feedbackSummary);
+
+      let treasuryBlock = "";
+      if (slug === "wrens-house") {
+        try {
+          const month = currentMonthString();
+          const rows = await listTreasuryForMonth(month);
+          const totals = summarizeTreasury(rows);
+          treasuryBlock = `Village fund snapshot for ${month} (same numbers as your dashboard): net ${formatUsd(totals.net_cents)}, income ${formatUsd(totals.income_cents)}, expenses ${formatUsd(totals.expense_cents)}. Treat these as the current real totals unless Frankie says otherwise.`;
+        } catch {
+          treasuryBlock = "";
+        }
+      }
+
       const base = buildAgentSystemPrompt(agent, meta.location);
       const systemWithContext = briefingContext
         ? `${base}\n\nIMPORTANT CONTEXT: You wrote the following in your morning briefing today. You know this because YOU wrote it. When Frankie references it, respond as if you remember writing it:\n\n"${briefingContext}"`
         : base;
-      const system = memoryBlock
-        ? `${systemWithContext}\n\n${memoryBlock}`
-        : systemWithContext;
+      const system = [
+        frankieBlock,
+        recapBlock,
+        memoryBlock,
+        feedbackBlock,
+        treasuryBlock,
+        systemWithContext,
+      ]
+        .filter(Boolean)
+        .join("\n\n");
 
       if (agent === "wren") {
         const toolAwareSystem = `${system}

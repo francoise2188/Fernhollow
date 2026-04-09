@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { verifyCronRequest } from "@/lib/cron-auth";
 import { getErrorMessage } from "@/lib/errors";
 import { completeTask, failTask, startTask } from "@/lib/fernhollow-tasks";
+import { runMonthlyRecapsForAllHouses } from "@/lib/conversation-recap";
 import {
   generateWrenIncomeNote,
   previousMonthString,
@@ -37,7 +38,20 @@ export async function GET(request: Request) {
     const summary = `Monthly income draft saved for ${month}. Content id: ${contentId}`;
     await completeTask(taskId, summary);
 
-    return NextResponse.json({ ok: true, month, contentId, taskId });
+    let recapResults: { slug: string; result: string }[] = [];
+    try {
+      recapResults = await runMonthlyRecapsForAllHouses({ month });
+    } catch (recapErr) {
+      console.error("[monthly-income] recap cron", recapErr);
+    }
+
+    return NextResponse.json({
+      ok: true,
+      month,
+      contentId,
+      taskId,
+      recaps: recapResults,
+    });
   } catch (e) {
     console.error(e);
     const msg = getErrorMessage(e);

@@ -12,6 +12,8 @@ type Task = {
   output: string | null;
 };
 
+type FailureTask = Task & { id: string };
+
 const GIRL_META: Record<string, { emoji: string; color: string; name: string }> = {
   clover: { emoji: "\u{1F340}", color: "#56823c", name: "Clover" },
   rosie: { emoji: "\u{1F338}", color: "#c4687a", name: "Rosie" },
@@ -40,13 +42,17 @@ function timeAgo(dateStr: string | null): string {
 
 export function ActivityFeed() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [failures, setFailures] = useState<FailureTask[]>([]);
   const [, setTick] = useState(0);
 
   useEffect(() => {
     const fetchTasks = () => {
       fetch("/api/activity")
         .then((r) => r.json())
-        .then((d) => setTasks(d.tasks ?? []))
+        .then((d) => {
+          setTasks(d.tasks ?? []);
+          setFailures(d.recentFailures ?? []);
+        })
         .catch(() => {});
     };
     fetchTasks();
@@ -59,7 +65,7 @@ export function ActivityFeed() {
     return () => clearInterval(id);
   }, []);
 
-  if (tasks.length === 0) return null;
+  if (tasks.length === 0 && failures.length === 0) return null;
 
   return (
     <>
@@ -137,8 +143,41 @@ export function ActivityFeed() {
           0%, 100% { opacity: 0.4; transform: scale(0.8); }
           50% { opacity: 1; transform: scale(1.2); }
         }
+
+        .activity-failures {
+          font-family: 'Nunito', sans-serif;
+          padding: 0.4rem 1rem 0.15rem;
+          background: rgba(120, 30, 30, 0.45);
+          border-top: 1px solid rgba(192, 57, 43, 0.5);
+          color: #f5e0dc;
+          font-size: 0.68rem;
+          line-height: 1.45;
+          pointer-events: auto;
+          max-height: 5.5rem;
+          overflow-y: auto;
+        }
       `}</style>
 
+      {failures.length > 0 && (
+        <div className="activity-failures">
+          <strong style={{ letterSpacing: "0.06em" }}>Automation needs attention</strong>
+          {failures.map((f) => {
+            const label = TASK_LABELS[f.task_type] ?? f.task_type.replace(/_/g, " ");
+            const hint = f.output ? `: ${f.output.slice(0, 120)}${f.output.length > 120 ? "…" : ""}` : "";
+            return (
+              <div key={f.id} style={{ marginTop: "0.25rem" }}>
+                {GIRL_META[f.agent]?.emoji ?? "\u{1F33F}"}{" "}
+                <span style={{ fontWeight: 700 }}>{GIRL_META[f.agent]?.name ?? f.agent}</span>
+                {" — "}
+                {label}
+                {hint}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {tasks.length > 0 ? (
       <div className="activity-feed">
         <span className="activity-label">village</span>
         {tasks.map((t, i) => {
@@ -187,6 +226,7 @@ export function ActivityFeed() {
           );
         })}
       </div>
+      ) : null}
     </>
   );
 }

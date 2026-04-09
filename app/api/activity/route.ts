@@ -23,5 +23,15 @@ export async function GET() {
     return true;
   });
 
-  return NextResponse.json({ tasks: latest });
+  const { data: failedRows } = await supabase
+    .from("fernhollow_tasks")
+    .select("id, agent, task_type, status, run_at, completed_at, output")
+    .eq("status", "failed")
+    .order("completed_at", { ascending: false })
+    .limit(12);
+
+  return NextResponse.json({
+    tasks: latest,
+    recentFailures: failedRows ?? [],
+  });
 }

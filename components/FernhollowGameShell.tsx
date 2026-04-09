@@ -6,6 +6,8 @@ import { ActivityFeed } from "@/components/ActivityFeed";
 import { FernhollowGame } from "@/components/FernhollowGame";
 import { GameChatOverlay } from "@/components/GameChatOverlay";
 import { LogoutButton } from "@/components/LogoutButton";
+import { ToastProvider } from "@/components/ToastProvider";
+import { UsageSummaryStrip } from "@/components/UsageSummaryStrip";
 import {
   FERNHOLLOW_AUDIO_LOCATION_EVENT,
   FERNHOLLOW_OPEN_CHAT_EVENT,
@@ -57,28 +59,33 @@ export function FernhollowGameShell() {
   const close = () => router.replace("/", { scroll: false });
 
   return (
-    <div className="fixed inset-0 z-0 bg-[#0f160f]">
-      <div className="absolute inset-0">
-        <FernhollowGame chatOverlayOpen={!!openSlug} />
-      </div>
-      {openSlug ? (
-        <GameChatOverlay
-          slug={openSlug}
-          onClose={close}
-          initialMessage={initialMessage}
-          briefingContext={briefingContext}
-        />
-      ) : null}
+    <ToastProvider>
+      <div className="fixed inset-0 z-0 bg-[#0f160f]">
+        <div className="absolute inset-0">
+          <FernhollowGame chatOverlayOpen={!!openSlug} />
+        </div>
+        {openSlug ? (
+          <GameChatOverlay
+            slug={openSlug}
+            onClose={close}
+            initialMessage={initialMessage}
+            briefingContext={briefingContext}
+          />
+        ) : null}
 
-      <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-[57]">
-        <ActivityFeed />
-      </div>
+        <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-[57]">
+          <ActivityFeed />
+        </div>
 
-      <div className="pointer-events-none absolute inset-0 z-[58]">
-        <div className="pointer-events-auto absolute top-4 right-4 flex gap-2">
-          <LogoutButton />
+        <div className="pointer-events-none absolute inset-0 z-[58]">
+          <div className="pointer-events-auto absolute top-4 right-4 flex flex-col items-end gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {openSlug !== "wrens-house" ? <UsageSummaryStrip /> : null}
+              <LogoutButton />
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </ToastProvider>
   );
 }
