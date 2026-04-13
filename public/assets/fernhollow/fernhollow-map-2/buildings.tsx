@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <tileset version="1.10" tiledversion="1.12.1" name="buildings" tilewidth="16" tileheight="16" tilecount="6231" columns="93">
- <image source="../../../../../../Users/franc/Downloads/cozy farm/full version/Buildings/buildings.png" width="1503" height="1072"/>
+ <image source="../cozy-farm-full/Buildings/buildings.png" width="1503" height="1072"/>
  <tile id="1444">
   <animation>
    <frame tileid="1444" duration="1000"/>

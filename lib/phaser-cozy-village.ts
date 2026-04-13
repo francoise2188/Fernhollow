@@ -28,11 +28,11 @@ const TILESET_NAME_TO_URL: ReadonlyArray<TilesetLoadSpec> = [
   },
   {
     name: "buildings",
-    url: fernhollowAssetPath("cozy farm", "full version", "Buildings", "buildings.png"),
+    url: fernhollowAssetPath("cozy-farm-full", "Buildings", "buildings.png"),
   },
   {
     name: "tiles",
-    url: fernhollowAssetPath("cozy farm", "full version", "tiles", "tiles.png"),
+    url: fernhollowAssetPath("cozy-farm-full", "tiles", "tiles.png"),
   },
   // Tiled name stays "tileset"; unique texture key so this row is not confused with "tiles" above.
   {
@@ -50,7 +50,7 @@ const TILESET_NAME_TO_URL: ReadonlyArray<TilesetLoadSpec> = [
   },
   {
     name: "UI_all",
-    url: fernhollowAssetPath("cozy farm", "full version", "ui", "UI_all.png"),
+    url: fernhollowAssetPath("cozy-farm-full", "ui", "UI_all.png"),
   },
   // Character paper-doll sheets (cozy-people — matches animated sprites in FernhollowGame)
   ...Object.entries(COZY_PEOPLE_TILED_TILESETS).map(([name, url]) => ({

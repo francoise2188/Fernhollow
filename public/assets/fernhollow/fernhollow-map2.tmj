@@ -1615,7 +1615,7 @@
         {
          "columns":93,
          "firstgid":1463,
-         "image":"..\/..\/..\/..\/..\/..\/Users\/franc\/Downloads\/cozy farm\/full version\/Buildings\/buildings.png",
+         "image":"cozy-farm-full\/Buildings\/buildings.png",
          "imageheight":1072,
          "imagewidth":1503,
          "margin":0,
@@ -1825,7 +1825,7 @@
         {
          "columns":54,
          "firstgid":7694,
-         "image":"..\/..\/..\/..\/..\/..\/Users\/franc\/Downloads\/cozy farm\/full version\/tiles\/tiles.png",
+         "image":"cozy-farm-full\/tiles\/tiles.png",
          "imageheight":800,
          "imagewidth":864,
          "margin":0,
@@ -1838,7 +1838,7 @@
         {
          "columns":54,
          "firstgid":10394,
-         "image":"..\/..\/..\/..\/..\/..\/Users\/franc\/Downloads\/cozy farm\/full version\/tiles\/tiles.png",
+         "image":"cozy-farm-full\/tiles\/tiles.png",
          "imageheight":800,
          "imagewidth":864,
          "margin":0,
@@ -2693,7 +2693,7 @@
         {
          "columns":53,
          "firstgid":13462,
-         "image":"..\/..\/..\/..\/..\/..\/Users\/franc\/Downloads\/cozy farm\/full version\/ui\/UI_all.png",
+         "image":"cozy-farm-full\/ui\/UI_all.png",
          "imageheight":480,
          "imagewidth":848,
          "margin":0,
