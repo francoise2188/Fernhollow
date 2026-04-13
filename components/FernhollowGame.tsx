@@ -5,13 +5,17 @@ import type { Scene } from "phaser";
 import { FERNHOLLOW_OPEN_CHAT_EVENT, fernhollowAssetPath } from "@/lib/assets";
 import {
   COZY_RIVER_HIT,
-  WATER_ANIMATION_32_KEY,
-  WATER_ANIMATION_FRAME_COUNT,
   WORLD_H,
   WORLD_W,
   createCozyEnvironment,
   preloadCozyHollow,
 } from "@/lib/phaser-cozy-village";
+import { registerTiledTileAnimations } from "@/lib/fernhollow-tiled-tile-animations";
+import {
+  CHARACTER_TILE_LAYERS,
+  createVillagerAnimationSet,
+  sampleVillagerFromMap,
+} from "@/lib/fernhollow-villager-appearance";
 
 /** House labels + tap targets (normalized 0–1). */
 const HOUSE_LABEL_ANCHORS = [
@@ -61,18 +65,16 @@ const WORLD_HOTSPOTS = [
   },
 ] as const;
 
-/** Map cells for animated villagers (skip static paper-doll tiles here). */
-const CLOVER_CELL = { tx: 5, ty: 6 } as const;
-const ROSIE_CELL = { tx: 25, ty: 9 } as const;
-const SCOUT_CELL = { tx: 4, ty: 15 } as const;
-const WREN_CELL = { tx: 25, ty: 18 } as const;
-
-const CHARACTER_SKIP_CELLS = [
-  CLOVER_CELL,
-  ROSIE_CELL,
-  SCOUT_CELL,
-  WREN_CELL,
-];
+/**
+ * Top-left tile of each villager’s 2×2 body in `fernhollow-map2.tmj` (16×16 cells).
+ * The map bakes static dolls here; we remove those tiles and draw animated sprites at the block center.
+ */
+const VILLAGER_BLOCKS = {
+  clover: { tx: 19, ty: 16 },
+  rosie: { tx: 13, ty: 36 },
+  scout: { tx: 51, ty: 22 },
+  wren: { tx: 46, ty: 30 },
+} as const;
 
 function emitOpenChat(slug: string) {
   window.dispatchEvent(
@@ -122,6 +124,13 @@ export function FernhollowGame({
 
     let game: import("phaser").Game | null = null;
     let cancelled = false;
+
+    const refreshScale = () => {
+      gameRef.current?.scale.refresh();
+    };
+    window.addEventListener("resize", refreshScale);
+    window.visualViewport?.addEventListener("resize", refreshScale);
+    window.addEventListener("orientationchange", refreshScale);
 
     void import("phaser").then((Phaser) => {
       if (cancelled || !parent) return;
@@ -181,6 +190,11 @@ export function FernhollowGame({
             { frameWidth: 32, frameHeight: 32 },
           );
           this.load.spritesheet(
+            "braids_sheet",
+            fernhollowAssetPath("cozy-people", "hair", "braids.png"),
+            { frameWidth: 32, frameHeight: 32 },
+          );
+          this.load.spritesheet(
             "floral_sheet",
             fernhollowAssetPath("cozy-people", "clothes", "floral.png"),
             { frameWidth: 32, frameHeight: 32 },
@@ -224,1184 +238,117 @@ export function FernhollowGame({
           const { map, mapScale, offsetX, offsetY } = env;
           const tileSize = map.tileWidth;
 
-          /**
-           * Tiled layers can mix tiles from several tilesets. Only draw when the tile GID
-           * (`tile.index`) falls inside this tileset's global id range, so the spritesheet
-           * frame index stays valid.
-           */
-          const renderLayerAsSprites = (
-            layerName: string,
-            textureKey: string,
-            tilesetName: string,
-            depth: number,
-            skipCells?: ReadonlyArray<{ tx: number; ty: number }>,
-          ) => {
-            const tileset = map.tilesets.find((t) => t.name === tilesetName);
-            if (!tileset || tileset.total <= 0) return;
+          const villagerSamples = {
+            clover: sampleVillagerFromMap(
+              map,
+              VILLAGER_BLOCKS.clover.tx,
+              VILLAGER_BLOCKS.clover.ty,
+            ),
+            rosie: sampleVillagerFromMap(
+              map,
+              VILLAGER_BLOCKS.rosie.tx,
+              VILLAGER_BLOCKS.rosie.ty,
+            ),
+            scout: sampleVillagerFromMap(
+              map,
+              VILLAGER_BLOCKS.scout.tx,
+              VILLAGER_BLOCKS.scout.ty,
+            ),
+            wren: sampleVillagerFromMap(
+              map,
+              VILLAGER_BLOCKS.wren.tx,
+              VILLAGER_BLOCKS.wren.ty,
+            ),
+          };
 
-            const firstgid = tileset.firstgid;
-            const lastGid = firstgid + tileset.total - 1;
-
-            const skipSet =
-              skipCells && skipCells.length > 0
-                ? new Set(skipCells.map((c) => `${c.tx},${c.ty}`))
-                : null;
-
-            const layerData = map.getLayer(layerName);
-            layerData?.tilemapLayer?.setVisible(false);
-            for (let ty = 0; ty < map.height; ty++) {
-              for (let tx = 0; tx < map.width; tx++) {
-                if (skipSet?.has(`${tx},${ty}`)) continue;
-                const tile = map.getTileAt(tx, ty, false, layerName);
-                if (!tile || tile.index <= 0) continue;
-                const gid = tile.index;
-                if (gid < firstgid || gid > lastGid) continue;
-                const frame = gid - firstgid;
-                const wx =
-                  (tx * tileSize + tileSize / 2) * mapScale + offsetX;
-                const wy =
-                  (ty * tileSize + tileSize / 2) * mapScale + offsetY;
-                this.add
-                  .image(wx, wy, textureKey, frame)
-                  .setOrigin(0.5, 0.5)
-                  .setScale(mapScale * 2)
-                  .setDepth(depth);
+          const clearStaticVillagerFootprint = (topTx: number, topTy: number) => {
+            for (const layerName of CHARACTER_TILE_LAYERS) {
+              for (let dy = 0; dy <= 1; dy++) {
+                for (let dx = 0; dx <= 1; dx++) {
+                  map.removeTileAt(
+                    topTx + dx,
+                    topTy + dy,
+                    true,
+                    true,
+                    layerName,
+                  );
+                }
               }
             }
           };
 
-          renderLayerAsSprites(
-            "girls",
-            "char_all_sheet",
-            "char_all",
-            20,
-            CHARACTER_SKIP_CELLS,
-          );
-          renderLayerAsSprites(
-            "hair",
-            "wavy_sheet",
-            "wavy",
-            21,
-            CHARACTER_SKIP_CELLS,
-          );
-          renderLayerAsSprites(
-            "hair",
-            "spacebuns_sheet",
-            "spacebuns",
-            21,
-            CHARACTER_SKIP_CELLS,
-          );
-          renderLayerAsSprites(
-            "hair",
-            "extra_long_sheet",
-            "extra_long",
-            21,
-            CHARACTER_SKIP_CELLS,
-          );
-          renderLayerAsSprites(
-            "hair",
-            "extra_long_skirt_sheet",
-            "extra_long_skirt",
-            21,
-            CHARACTER_SKIP_CELLS,
-          );
-          renderLayerAsSprites(
-            "clothes",
-            "dress_sheet",
-            "dress",
-            22,
-            CHARACTER_SKIP_CELLS,
-          );
-          renderLayerAsSprites(
-            "clothes",
-            "floral_sheet",
-            "floral",
-            22,
-            CHARACTER_SKIP_CELLS,
-          );
-          renderLayerAsSprites(
-            "clothes bottom",
-            "pants_sheet",
-            "pants",
-            21,
-            CHARACTER_SKIP_CELLS,
-          );
-          renderLayerAsSprites(
-            "clothes bottom",
-            "extra_long_skirt_sheet",
-            "extra_long_skirt",
-            21,
-            CHARACTER_SKIP_CELLS,
-          );
-          renderLayerAsSprites(
-            "clothes bottom",
-            "dress_sheet",
-            "dress",
-            21,
-            CHARACTER_SKIP_CELLS,
-          );
-          renderLayerAsSprites(
-            "shoes",
-            "shoes_sheet",
-            "shoes",
-            20,
-            CHARACTER_SKIP_CELLS,
-          );
-          renderLayerAsSprites(
-            "eyes",
-            "eyes_sheet",
-            "eyes",
-            23,
-            CHARACTER_SKIP_CELLS,
-          );
-          renderLayerAsSprites(
-            "blush",
-            "blush_sheet",
-            "blush_all",
-            23,
-            CHARACTER_SKIP_CELLS,
-          );
-          renderLayerAsSprites(
-            "lipstick",
-            "lipstick_sheet",
-            "lipstick ",
-            23,
-            CHARACTER_SKIP_CELLS,
-          );
-
-          map.getLayer("water")?.tilemapLayer?.setVisible(false);
-          const waterAnimLayerData = map.getLayer("water animation");
-          const waterDepth = waterAnimLayerData?.tilemapLayer?.depth ?? 1;
-          waterAnimLayerData?.tilemapLayer?.setVisible(false);
-
-          let waterFrame = 0;
-          const waterSprites: Phaser.GameObjects.Image[] = [];
-          for (let ty = 0; ty < map.height; ty++) {
-            for (let tx = 0; tx < map.width; tx++) {
-              const tile = map.getTileAt(tx, ty, false, "water animation");
-              if (!tile || tile.index <= 0) continue;
-              const wx =
-                (tx * tileSize + tileSize / 2) * mapScale + offsetX;
-              const wy =
-                (ty * tileSize + tileSize / 2) * mapScale + offsetY;
-              waterSprites.push(
-                this.add
-                  .image(wx, wy, WATER_ANIMATION_32_KEY, 0)
-                  .setOrigin(0.5, 0.5)
-                  .setScale(mapScale * 2)
-                  .setDepth(waterDepth),
-              );
-            }
+          for (const key of Object.keys(VILLAGER_BLOCKS) as Array<
+            keyof typeof VILLAGER_BLOCKS
+          >) {
+            const { tx, ty } = VILLAGER_BLOCKS[key];
+            clearStaticVillagerFootprint(tx, ty);
           }
 
-          this.time.addEvent({
-            delay: 150,
-            loop: true,
-            callback: () => {
-              waterFrame =
-                (waterFrame + 1) % WATER_ANIMATION_FRAME_COUNT;
-              for (const sprite of waterSprites) {
-                sprite.setFrame(waterFrame);
-              }
-            },
+          registerTiledTileAnimations(this, map);
+
+          /** World center of a 2×2 block whose top-left tile is `(topTx, topTy)`. */
+          const blockCenterWorld = (topTx: number, topTy: number) => ({
+            wx: ((topTx + 1) * tileSize) * mapScale + offsetX,
+            wy: ((topTy + 1) * tileSize) * mapScale + offsetY,
           });
 
-          const cloverTX = CLOVER_CELL.tx;
-          const cloverTY = CLOVER_CELL.ty;
-          const cloverWX =
-            (cloverTX * tileSize + tileSize / 2) * mapScale + offsetX;
-          const cloverWY =
-            (cloverTY * tileSize + tileSize / 2) * mapScale + offsetY;
+          const { wx: cloverWX, wy: cloverWY } = blockCenterWorld(
+            VILLAGER_BLOCKS.clover.tx,
+            VILLAGER_BLOCKS.clover.ty,
+          );
+          const { wx: rosieWX, wy: rosieWY } = blockCenterWorld(
+            VILLAGER_BLOCKS.rosie.tx,
+            VILLAGER_BLOCKS.rosie.ty,
+          );
+          const { wx: scoutWX, wy: scoutWY } = blockCenterWorld(
+            VILLAGER_BLOCKS.scout.tx,
+            VILLAGER_BLOCKS.scout.ty,
+          );
+          const { wx: wrenWX, wy: wrenWY } = blockCenterWorld(
+            VILLAGER_BLOCKS.wren.tx,
+            VILLAGER_BLOCKS.wren.ty,
+          );
 
-          const rosieTX = ROSIE_CELL.tx;
-          const rosieTY = ROSIE_CELL.ty;
-          const rosieWX =
-            (rosieTX * tileSize + tileSize / 2) * mapScale + offsetX;
-          const rosieWY =
-            (rosieTY * tileSize + tileSize / 2) * mapScale + offsetY;
-
-          const scoutTX = SCOUT_CELL.tx;
-          const scoutTY = SCOUT_CELL.ty;
-          const scoutWX =
-            (scoutTX * tileSize + tileSize / 2) * mapScale + offsetX;
-          const scoutWY =
-            (scoutTY * tileSize + tileSize / 2) * mapScale + offsetY;
-
-          const wrenTX = WREN_CELL.tx;
-          const wrenTY = WREN_CELL.ty;
-          const wrenWX =
-            (wrenTX * tileSize + tileSize / 2) * mapScale + offsetX;
-          const wrenWY =
-            (wrenTY * tileSize + tileSize / 2) * mapScale + offsetY;
-
-          /** Body — 64 cols, col 0 (down / up / right / left rows). */
-          this.anims.create({
-            key: "clover-walk-down",
-            frames: this.anims.generateFrameNumbers("char_all_sheet", {
-              frames: [0, 1, 2, 3],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "clover-walk-up",
-            frames: this.anims.generateFrameNumbers("char_all_sheet", {
-              frames: [64, 65, 66, 67],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "clover-walk-right",
-            frames: this.anims.generateFrameNumbers("char_all_sheet", {
-              frames: [128, 129, 130, 131],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "clover-walk-left",
-            frames: this.anims.generateFrameNumbers("char_all_sheet", {
-              frames: [192, 193, 194, 195],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-
-          /** Wavy hair — 112 cols, col 12 */
-          this.anims.create({
-            key: "clover-hair-down",
-            frames: this.anims.generateFrameNumbers("wavy_sheet", {
-              frames: [12, 13, 14, 15],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "clover-hair-up",
-            frames: this.anims.generateFrameNumbers("wavy_sheet", {
-              frames: [124, 125, 126, 127],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "clover-hair-right",
-            frames: this.anims.generateFrameNumbers("wavy_sheet", {
-              frames: [236, 237, 238, 239],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "clover-hair-left",
-            frames: this.anims.generateFrameNumbers("wavy_sheet", {
-              frames: [348, 349, 350, 351],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-
-          /** Dress — col base 2370, 80 cols per row (down / up / right / left). */
-          this.anims.create({
-            key: "clover-clothes-down",
-            frames: this.anims.generateFrameNumbers("dress_sheet", {
-              frames: [2370],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "clover-clothes-up",
-            frames: this.anims.generateFrameNumbers("dress_sheet", {
-              frames: [2370 + 80],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "clover-clothes-right",
-            frames: this.anims.generateFrameNumbers("dress_sheet", {
-              frames: [2370 + 160],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "clover-clothes-left",
-            frames: this.anims.generateFrameNumbers("dress_sheet", {
-              frames: [2370 + 240],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-
-          /** Shoes — 80 cols, col 76 */
-          this.anims.create({
-            key: "clover-shoes-down",
-            frames: this.anims.generateFrameNumbers("shoes_sheet", {
-              frames: [76, 77, 78, 79],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "clover-shoes-up",
-            frames: this.anims.generateFrameNumbers("shoes_sheet", {
-              frames: [156, 157, 158, 159],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "clover-shoes-right",
-            frames: this.anims.generateFrameNumbers("shoes_sheet", {
-              frames: [236, 237, 238, 239],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "clover-shoes-left",
-            frames: this.anims.generateFrameNumbers("shoes_sheet", {
-              frames: [316, 317, 318, 319],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-
-          /** Eyes — 112 cols, col 19 */
-          this.anims.create({
-            key: "clover-eyes-down",
-            frames: this.anims.generateFrameNumbers("eyes_sheet", {
-              frames: [19, 20, 21, 22],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "clover-eyes-up",
-            frames: this.anims.generateFrameNumbers("eyes_sheet", {
-              frames: [131, 132, 133, 134],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "clover-eyes-right",
-            frames: this.anims.generateFrameNumbers("eyes_sheet", {
-              frames: [243, 244, 245, 246],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "clover-eyes-left",
-            frames: this.anims.generateFrameNumbers("eyes_sheet", {
-              frames: [355, 356, 357, 358],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-
-          /** Blush — 40 cols, col 0 */
-          this.anims.create({
-            key: "clover-blush-down",
-            frames: this.anims.generateFrameNumbers("blush_sheet", {
-              frames: [0, 1, 2, 3],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "clover-blush-up",
-            frames: this.anims.generateFrameNumbers("blush_sheet", {
-              frames: [40, 41, 42, 43],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "clover-blush-right",
-            frames: this.anims.generateFrameNumbers("blush_sheet", {
-              frames: [80, 81, 82, 83],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "clover-blush-left",
-            frames: this.anims.generateFrameNumbers("blush_sheet", {
-              frames: [120, 121, 122, 123],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-
-          /** Lipstick — 40 cols, col 8 */
-          this.anims.create({
-            key: "clover-lipstick-down",
-            frames: this.anims.generateFrameNumbers("lipstick_sheet", {
-              frames: [8, 9, 10, 11],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "clover-lipstick-up",
-            frames: this.anims.generateFrameNumbers("lipstick_sheet", {
-              frames: [48, 49, 50, 51],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "clover-lipstick-right",
-            frames: this.anims.generateFrameNumbers("lipstick_sheet", {
-              frames: [88, 89, 90, 91],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "clover-lipstick-left",
-            frames: this.anims.generateFrameNumbers("lipstick_sheet", {
-              frames: [128, 129, 130, 131],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-
-          /** ── Rosie (char col 25) */
-          this.anims.create({
-            key: "rosie-walk-down",
-            frames: this.anims.generateFrameNumbers("char_all_sheet", {
-              frames: [25, 26, 27, 28],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "rosie-walk-up",
-            frames: this.anims.generateFrameNumbers("char_all_sheet", {
-              frames: [89, 90, 91, 92],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "rosie-walk-right",
-            frames: this.anims.generateFrameNumbers("char_all_sheet", {
-              frames: [153, 154, 155, 156],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "rosie-walk-left",
-            frames: this.anims.generateFrameNumbers("char_all_sheet", {
-              frames: [217, 218, 219, 220],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "rosie-hair-down",
-            frames: this.anims.generateFrameNumbers("extra_long_sheet", {
-              frames: [49, 50, 51, 52],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "rosie-hair-up",
-            frames: this.anims.generateFrameNumbers("extra_long_sheet", {
-              frames: [161, 162, 163, 164],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "rosie-hair-right",
-            frames: this.anims.generateFrameNumbers("extra_long_sheet", {
-              frames: [273, 274, 275, 276],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "rosie-hair-left",
-            frames: this.anims.generateFrameNumbers("extra_long_sheet", {
-              frames: [385, 386, 387, 388],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "rosie-clothes-down",
-            frames: this.anims.generateFrameNumbers("floral_sheet", {
-              frames: [53],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "rosie-clothes-up",
-            frames: this.anims.generateFrameNumbers("floral_sheet", {
-              frames: [53 + 80],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "rosie-clothes-right",
-            frames: this.anims.generateFrameNumbers("floral_sheet", {
-              frames: [53 + 160],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "rosie-clothes-left",
-            frames: this.anims.generateFrameNumbers("floral_sheet", {
-              frames: [53 + 240],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "rosie-bottom-down",
-            frames: this.anims.generateFrameNumbers("pants_sheet", {
-              frames: [56],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "rosie-bottom-up",
-            frames: this.anims.generateFrameNumbers("pants_sheet", {
-              frames: [56 + 80],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "rosie-bottom-right",
-            frames: this.anims.generateFrameNumbers("pants_sheet", {
-              frames: [56 + 160],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "rosie-bottom-left",
-            frames: this.anims.generateFrameNumbers("pants_sheet", {
-              frames: [56 + 240],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "rosie-shoes-down",
-            frames: this.anims.generateFrameNumbers("shoes_sheet", {
-              frames: [60],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "rosie-shoes-up",
-            frames: this.anims.generateFrameNumbers("shoes_sheet", {
-              frames: [60 + 80],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "rosie-shoes-right",
-            frames: this.anims.generateFrameNumbers("shoes_sheet", {
-              frames: [60 + 160],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "rosie-shoes-left",
-            frames: this.anims.generateFrameNumbers("shoes_sheet", {
-              frames: [60 + 240],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "rosie-eyes-down",
-            frames: this.anims.generateFrameNumbers("eyes_sheet", {
-              frames: [40],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "rosie-eyes-up",
-            frames: this.anims.generateFrameNumbers("eyes_sheet", {
-              frames: [40 + 112],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "rosie-eyes-right",
-            frames: this.anims.generateFrameNumbers("eyes_sheet", {
-              frames: [40 + 224],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "rosie-eyes-left",
-            frames: this.anims.generateFrameNumbers("eyes_sheet", {
-              frames: [40 + 336],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "rosie-blush-down",
-            frames: this.anims.generateFrameNumbers("blush_sheet", {
-              frames: [8],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "rosie-blush-up",
-            frames: this.anims.generateFrameNumbers("blush_sheet", {
-              frames: [8 + 40],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "rosie-blush-right",
-            frames: this.anims.generateFrameNumbers("blush_sheet", {
-              frames: [8 + 80],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "rosie-blush-left",
-            frames: this.anims.generateFrameNumbers("blush_sheet", {
-              frames: [8 + 120],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "rosie-lipstick-down",
-            frames: this.anims.generateFrameNumbers("lipstick_sheet", {
-              frames: [8],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "rosie-lipstick-up",
-            frames: this.anims.generateFrameNumbers("lipstick_sheet", {
-              frames: [8 + 40],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "rosie-lipstick-right",
-            frames: this.anims.generateFrameNumbers("lipstick_sheet", {
-              frames: [8 + 80],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "rosie-lipstick-left",
-            frames: this.anims.generateFrameNumbers("lipstick_sheet", {
-              frames: [8 + 120],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-
-          /** ── Scout (char col 24) */
-          this.anims.create({
-            key: "scout-walk-down",
-            frames: this.anims.generateFrameNumbers("char_all_sheet", {
-              frames: [24, 25, 26, 27],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "scout-walk-up",
-            frames: this.anims.generateFrameNumbers("char_all_sheet", {
-              frames: [88, 89, 90, 91],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "scout-walk-right",
-            frames: this.anims.generateFrameNumbers("char_all_sheet", {
-              frames: [152, 153, 154, 155],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "scout-walk-left",
-            frames: this.anims.generateFrameNumbers("char_all_sheet", {
-              frames: [216, 217, 218, 219],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          /** Four frames per dir so hair tracks walk (single frame left scalp visible vs body). */
-          this.anims.create({
-            key: "scout-hair-down",
-            frames: this.anims.generateFrameNumbers("extra_long_skirt_sheet", {
-              frames: [64, 65, 66, 67],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "scout-hair-up",
-            frames: this.anims.generateFrameNumbers("extra_long_skirt_sheet", {
-              frames: [176, 177, 178, 179],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "scout-hair-right",
-            frames: this.anims.generateFrameNumbers("extra_long_skirt_sheet", {
-              frames: [288, 289, 290, 291],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "scout-hair-left",
-            frames: this.anims.generateFrameNumbers("extra_long_skirt_sheet", {
-              frames: [400, 401, 402, 403],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "scout-clothes-down",
-            frames: this.anims.generateFrameNumbers("floral_sheet", {
-              frames: [59],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "scout-clothes-up",
-            frames: this.anims.generateFrameNumbers("floral_sheet", {
-              frames: [59 + 80],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "scout-clothes-right",
-            frames: this.anims.generateFrameNumbers("floral_sheet", {
-              frames: [59 + 160],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "scout-clothes-left",
-            frames: this.anims.generateFrameNumbers("floral_sheet", {
-              frames: [59 + 240],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "scout-bottom-down",
-            frames: this.anims.generateFrameNumbers("pants_sheet", {
-              frames: [56],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "scout-bottom-up",
-            frames: this.anims.generateFrameNumbers("pants_sheet", {
-              frames: [56 + 80],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "scout-bottom-right",
-            frames: this.anims.generateFrameNumbers("pants_sheet", {
-              frames: [56 + 160],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "scout-bottom-left",
-            frames: this.anims.generateFrameNumbers("pants_sheet", {
-              frames: [56 + 240],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "scout-shoes-down",
-            frames: this.anims.generateFrameNumbers("shoes_sheet", {
-              frames: [20],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "scout-shoes-up",
-            frames: this.anims.generateFrameNumbers("shoes_sheet", {
-              frames: [20 + 80],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "scout-shoes-right",
-            frames: this.anims.generateFrameNumbers("shoes_sheet", {
-              frames: [20 + 160],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "scout-shoes-left",
-            frames: this.anims.generateFrameNumbers("shoes_sheet", {
-              frames: [20 + 240],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "scout-eyes-down",
-            frames: this.anims.generateFrameNumbers("eyes_sheet", {
-              frames: [64],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "scout-eyes-up",
-            frames: this.anims.generateFrameNumbers("eyes_sheet", {
-              frames: [64 + 112],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "scout-eyes-right",
-            frames: this.anims.generateFrameNumbers("eyes_sheet", {
-              frames: [64 + 224],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "scout-eyes-left",
-            frames: this.anims.generateFrameNumbers("eyes_sheet", {
-              frames: [64 + 336],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "scout-blush-down",
-            frames: this.anims.generateFrameNumbers("blush_sheet", {
-              frames: [16],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "scout-blush-up",
-            frames: this.anims.generateFrameNumbers("blush_sheet", {
-              frames: [16 + 40],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "scout-blush-right",
-            frames: this.anims.generateFrameNumbers("blush_sheet", {
-              frames: [16 + 80],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "scout-blush-left",
-            frames: this.anims.generateFrameNumbers("blush_sheet", {
-              frames: [16 + 120],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "scout-lipstick-down",
-            frames: this.anims.generateFrameNumbers("lipstick_sheet", {
-              frames: [0],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "scout-lipstick-up",
-            frames: this.anims.generateFrameNumbers("lipstick_sheet", {
-              frames: [40],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "scout-lipstick-right",
-            frames: this.anims.generateFrameNumbers("lipstick_sheet", {
-              frames: [80],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "scout-lipstick-left",
-            frames: this.anims.generateFrameNumbers("lipstick_sheet", {
-              frames: [120],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-
-          /** ── Wren (char col 36) */
-          this.anims.create({
-            key: "wren-walk-down",
-            frames: this.anims.generateFrameNumbers("char_all_sheet", {
-              frames: [36, 37, 38, 39],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "wren-walk-up",
-            frames: this.anims.generateFrameNumbers("char_all_sheet", {
-              frames: [100, 101, 102, 103],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "wren-walk-right",
-            frames: this.anims.generateFrameNumbers("char_all_sheet", {
-              frames: [164, 165, 166, 167],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "wren-walk-left",
-            frames: this.anims.generateFrameNumbers("char_all_sheet", {
-              frames: [228, 229, 230, 231],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "wren-hair-down",
-            frames: this.anims.generateFrameNumbers("spacebuns_sheet", {
-              frames: [81, 82, 83, 84],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "wren-hair-up",
-            frames: this.anims.generateFrameNumbers("spacebuns_sheet", {
-              frames: [193, 194, 195, 196],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "wren-hair-right",
-            frames: this.anims.generateFrameNumbers("spacebuns_sheet", {
-              frames: [305, 306, 307, 308],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "wren-hair-left",
-            frames: this.anims.generateFrameNumbers("spacebuns_sheet", {
-              frames: [417, 418, 419, 420],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "wren-clothes-down",
-            frames: this.anims.generateFrameNumbers("dress_sheet", {
-              frames: [45],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "wren-clothes-up",
-            frames: this.anims.generateFrameNumbers("dress_sheet", {
-              frames: [45 + 80],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "wren-clothes-right",
-            frames: this.anims.generateFrameNumbers("dress_sheet", {
-              frames: [45 + 160],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "wren-clothes-left",
-            frames: this.anims.generateFrameNumbers("dress_sheet", {
-              frames: [45 + 240],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "wren-eyes-down",
-            frames: this.anims.generateFrameNumbers("eyes_sheet", {
-              frames: [48],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "wren-eyes-up",
-            frames: this.anims.generateFrameNumbers("eyes_sheet", {
-              frames: [48 + 112],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "wren-eyes-right",
-            frames: this.anims.generateFrameNumbers("eyes_sheet", {
-              frames: [48 + 224],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "wren-eyes-left",
-            frames: this.anims.generateFrameNumbers("eyes_sheet", {
-              frames: [48 + 336],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "wren-blush-down",
-            frames: this.anims.generateFrameNumbers("blush_sheet", {
-              frames: [8],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "wren-blush-up",
-            frames: this.anims.generateFrameNumbers("blush_sheet", {
-              frames: [8 + 40],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "wren-blush-right",
-            frames: this.anims.generateFrameNumbers("blush_sheet", {
-              frames: [8 + 80],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "wren-blush-left",
-            frames: this.anims.generateFrameNumbers("blush_sheet", {
-              frames: [8 + 120],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "wren-lipstick-down",
-            frames: this.anims.generateFrameNumbers("lipstick_sheet", {
-              frames: [24],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "wren-lipstick-up",
-            frames: this.anims.generateFrameNumbers("lipstick_sheet", {
-              frames: [24 + 40],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "wren-lipstick-right",
-            frames: this.anims.generateFrameNumbers("lipstick_sheet", {
-              frames: [24 + 80],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-          this.anims.create({
-            key: "wren-lipstick-left",
-            frames: this.anims.generateFrameNumbers("lipstick_sheet", {
-              frames: [24 + 120],
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
+          const cloverP = createVillagerAnimationSet(
+            this,
+            "clover",
+            villagerSamples.clover,
+          );
+          const rosieP = createVillagerAnimationSet(
+            this,
+            "rosie",
+            villagerSamples.rosie,
+          );
+          const scoutP = createVillagerAnimationSet(
+            this,
+            "scout",
+            villagerSamples.scout,
+          );
+          const wrenP = createVillagerAnimationSet(
+            this,
+            "wren",
+            villagerSamples.wren,
+          );
 
           const scale = mapScale * 2;
           const body = this.add
-            .sprite(0, 0, "char_all_sheet", 0)
+            .sprite(0, 0, cloverP.body.key, cloverP.body.frame)
             .setOrigin(0.5, 0.5)
             .setScale(scale);
           const hair = this.add
-            .sprite(0, 0, "wavy_sheet", 12)
+            .sprite(0, 0, cloverP.hair.key, cloverP.hair.frame)
             .setOrigin(0.5, 0.5)
             .setScale(scale);
           const clothes = this.add
-            .sprite(0, 0, "dress_sheet", 2370)
+            .sprite(0, 0, cloverP.dress.key, cloverP.dress.frame)
             .setOrigin(0.5, 0.5)
             .setScale(scale);
           const shoes = this.add
-            .sprite(0, 0, "shoes_sheet", 76)
+            .sprite(0, 0, cloverP.shoes.key, cloverP.shoes.frame)
             .setOrigin(0.5, 0.5)
             .setScale(scale);
           const eyes = this.add
-            .sprite(0, 0, "eyes_sheet", 19)
+            .sprite(0, 0, cloverP.eyes.key, cloverP.eyes.frame)
             .setOrigin(0.5, 0.5)
             .setScale(scale);
           const blush = this.add
@@ -1409,7 +356,7 @@ export function FernhollowGame({
             .setOrigin(0.5, 0.5)
             .setScale(scale);
           const lipstick = this.add
-            .sprite(0, 0, "lipstick_sheet", 8)
+            .sprite(0, 0, cloverP.lips.key, cloverP.lips.frame)
             .setOrigin(0.5, 0.5)
             .setScale(scale);
 
@@ -1422,7 +369,7 @@ export function FernhollowGame({
             blush,
             lipstick,
           ]);
-          cloverContainer.setDepth(20);
+          cloverContainer.setDepth(24);
 
           const playCloverAnim = (dir: "down" | "left" | "right" | "up") => {
             body.play(`clover-walk-${dir}`);
@@ -1442,13 +389,13 @@ export function FernhollowGame({
             eyes.anims.stop();
             blush.anims.stop();
             lipstick.anims.stop();
-            body.setFrame(0);
-            hair.setFrame(12);
-            clothes.setFrame(2370);
-            shoes.setFrame(76);
-            eyes.setFrame(19);
+            body.setFrame(cloverP.body.frame);
+            hair.setFrame(cloverP.hair.frame);
+            clothes.setFrame(cloverP.dress.frame);
+            shoes.setFrame(cloverP.shoes.frame);
+            eyes.setFrame(cloverP.eyes.frame);
             blush.setFrame(0);
-            lipstick.setFrame(8);
+            lipstick.setFrame(cloverP.lips.frame);
           };
 
           body.play("clover-walk-down");
@@ -1495,15 +442,15 @@ export function FernhollowGame({
           this.time.delayedCall(500, roamClover);
 
           const rosieBody = this.add
-            .sprite(0, 0, "char_all_sheet", 25)
+            .sprite(0, 0, rosieP.body.key, rosieP.body.frame)
             .setOrigin(0.5, 0.5)
             .setScale(scale);
           const rosieHair = this.add
-            .sprite(0, 0, "extra_long_sheet", 49)
+            .sprite(0, 0, rosieP.hair.key, rosieP.hair.frame)
             .setOrigin(0.5, 0.5)
             .setScale(scale);
           const rosieClothes = this.add
-            .sprite(0, 0, "floral_sheet", 53)
+            .sprite(0, 0, rosieP.dress.key, rosieP.dress.frame)
             .setOrigin(0.5, 0.5)
             .setScale(scale);
           const rosieBottom = this.add
@@ -1511,11 +458,11 @@ export function FernhollowGame({
             .setOrigin(0.5, 0.5)
             .setScale(scale);
           const rosieShoes = this.add
-            .sprite(0, 0, "shoes_sheet", 60)
+            .sprite(0, 0, rosieP.shoes.key, rosieP.shoes.frame)
             .setOrigin(0.5, 0.5)
             .setScale(scale);
           const rosieEyes = this.add
-            .sprite(0, 0, "eyes_sheet", 40)
+            .sprite(0, 0, rosieP.eyes.key, rosieP.eyes.frame)
             .setOrigin(0.5, 0.5)
             .setScale(scale);
           const rosieBlush = this.add
@@ -1523,7 +470,7 @@ export function FernhollowGame({
             .setOrigin(0.5, 0.5)
             .setScale(scale);
           const rosieLipstick = this.add
-            .sprite(0, 0, "lipstick_sheet", 8)
+            .sprite(0, 0, rosieP.lips.key, rosieP.lips.frame)
             .setOrigin(0.5, 0.5)
             .setScale(scale);
 
@@ -1537,7 +484,7 @@ export function FernhollowGame({
             rosieHair,
             rosieLipstick,
           ]);
-          rosieContainer.setDepth(20);
+          rosieContainer.setDepth(24);
 
           const syncRosieHairToBodyWalk = (
             anim: { key: string },
@@ -1572,14 +519,14 @@ export function FernhollowGame({
             rosieEyes.anims.stop();
             rosieBlush.anims.stop();
             rosieLipstick.anims.stop();
-            rosieBody.setFrame(25);
-            rosieHair.setFrame(49);
-            rosieClothes.setFrame(53);
+            rosieBody.setFrame(rosieP.body.frame);
+            rosieHair.setFrame(rosieP.hair.frame);
+            rosieClothes.setFrame(rosieP.dress.frame);
             rosieBottom.setFrame(56);
-            rosieShoes.setFrame(60);
-            rosieEyes.setFrame(40);
+            rosieShoes.setFrame(rosieP.shoes.frame);
+            rosieEyes.setFrame(rosieP.eyes.frame);
             rosieBlush.setFrame(8);
-            rosieLipstick.setFrame(8);
+            rosieLipstick.setFrame(rosieP.lips.frame);
           };
 
           playRosieAnim("down");
@@ -1615,15 +562,15 @@ export function FernhollowGame({
           this.time.delayedCall(800, roamRosie);
 
           const scoutBody = this.add
-            .sprite(0, 0, "char_all_sheet", 24)
+            .sprite(0, 0, scoutP.body.key, scoutP.body.frame)
             .setOrigin(0.5, 0.5)
             .setScale(scale);
           const scoutHair = this.add
-            .sprite(0, 0, "extra_long_skirt_sheet", 64)
+            .sprite(0, 0, scoutP.hair.key, scoutP.hair.frame)
             .setOrigin(0.5, 0.5)
             .setScale(scale);
           const scoutClothes = this.add
-            .sprite(0, 0, "floral_sheet", 59)
+            .sprite(0, 0, scoutP.dress.key, scoutP.dress.frame)
             .setOrigin(0.5, 0.5)
             .setScale(scale);
           const scoutBottom = this.add
@@ -1631,11 +578,11 @@ export function FernhollowGame({
             .setOrigin(0.5, 0.5)
             .setScale(scale);
           const scoutShoes = this.add
-            .sprite(0, 0, "shoes_sheet", 20)
+            .sprite(0, 0, scoutP.shoes.key, scoutP.shoes.frame)
             .setOrigin(0.5, 0.5)
             .setScale(scale);
           const scoutEyes = this.add
-            .sprite(0, 0, "eyes_sheet", 64)
+            .sprite(0, 0, scoutP.eyes.key, scoutP.eyes.frame)
             .setOrigin(0.5, 0.5)
             .setScale(scale);
           const scoutBlush = this.add
@@ -1643,7 +590,7 @@ export function FernhollowGame({
             .setOrigin(0.5, 0.5)
             .setScale(scale);
           const scoutLipstick = this.add
-            .sprite(0, 0, "lipstick_sheet", 0)
+            .sprite(0, 0, scoutP.lips.key, scoutP.lips.frame)
             .setOrigin(0.5, 0.5)
             .setScale(scale);
 
@@ -1657,7 +604,7 @@ export function FernhollowGame({
             scoutBlush,
             scoutLipstick,
           ]);
-          scoutContainer.setDepth(20);
+          scoutContainer.setDepth(24);
 
           const syncScoutHairToBodyWalk = (
             anim: { key: string },
@@ -1692,14 +639,14 @@ export function FernhollowGame({
             scoutEyes.anims.stop();
             scoutBlush.anims.stop();
             scoutLipstick.anims.stop();
-            scoutBody.setFrame(24);
-            scoutHair.setFrame(64);
-            scoutClothes.setFrame(59);
+            scoutBody.setFrame(scoutP.body.frame);
+            scoutHair.setFrame(scoutP.hair.frame);
+            scoutClothes.setFrame(scoutP.dress.frame);
             scoutBottom.setFrame(56);
-            scoutShoes.setFrame(20);
-            scoutEyes.setFrame(64);
+            scoutShoes.setFrame(scoutP.shoes.frame);
+            scoutEyes.setFrame(scoutP.eyes.frame);
             scoutBlush.setFrame(16);
-            scoutLipstick.setFrame(0);
+            scoutLipstick.setFrame(scoutP.lips.frame);
           };
 
           playScoutAnim("down");
@@ -1735,19 +682,19 @@ export function FernhollowGame({
           this.time.delayedCall(1100, roamScout);
 
           const wrenBody = this.add
-            .sprite(0, 0, "char_all_sheet", 36)
+            .sprite(0, 0, wrenP.body.key, wrenP.body.frame)
             .setOrigin(0.5, 0.5)
             .setScale(scale);
           const wrenHair = this.add
-            .sprite(0, 0, "spacebuns_sheet", 81)
+            .sprite(0, 0, wrenP.hair.key, wrenP.hair.frame)
             .setOrigin(0.5, 0.5)
             .setScale(scale);
           const wrenClothes = this.add
-            .sprite(0, 0, "dress_sheet", 45)
+            .sprite(0, 0, wrenP.dress.key, wrenP.dress.frame)
             .setOrigin(0.5, 0.5)
             .setScale(scale);
           const wrenEyes = this.add
-            .sprite(0, 0, "eyes_sheet", 48)
+            .sprite(0, 0, wrenP.eyes.key, wrenP.eyes.frame)
             .setOrigin(0.5, 0.5)
             .setScale(scale);
           const wrenBlush = this.add
@@ -1755,7 +702,7 @@ export function FernhollowGame({
             .setOrigin(0.5, 0.5)
             .setScale(scale);
           const wrenLipstick = this.add
-            .sprite(0, 0, "lipstick_sheet", 24)
+            .sprite(0, 0, wrenP.lips.key, wrenP.lips.frame)
             .setOrigin(0.5, 0.5)
             .setScale(scale);
 
@@ -1767,7 +714,7 @@ export function FernhollowGame({
             wrenLipstick,
             wrenHair,
           ]);
-          wrenContainer.setDepth(20);
+          wrenContainer.setDepth(24);
 
           const syncWrenHairToBodyWalk = (
             anim: { key: string },
@@ -1798,12 +745,12 @@ export function FernhollowGame({
             wrenEyes.anims.stop();
             wrenBlush.anims.stop();
             wrenLipstick.anims.stop();
-            wrenBody.setFrame(36);
-            wrenHair.setFrame(81);
-            wrenClothes.setFrame(45);
-            wrenEyes.setFrame(48);
+            wrenBody.setFrame(wrenP.body.frame);
+            wrenHair.setFrame(wrenP.hair.frame);
+            wrenClothes.setFrame(wrenP.dress.frame);
+            wrenEyes.setFrame(wrenP.eyes.frame);
             wrenBlush.setFrame(8);
-            wrenLipstick.setFrame(24);
+            wrenLipstick.setFrame(wrenP.lips.frame);
           };
 
           playWrenAnim("down");
@@ -2163,6 +1110,9 @@ export function FernhollowGame({
     });
 
     return () => {
+      window.removeEventListener("resize", refreshScale);
+      window.visualViewport?.removeEventListener("resize", refreshScale);
+      window.removeEventListener("orientationchange", refreshScale);
       document.body.style.cursor = "default";
       cancelled = true;
       gameRef.current = null;
@@ -2179,8 +1129,9 @@ export function FernhollowGame({
       style={{
         position: "fixed",
         inset: 0,
-        width: "100vw",
-        height: "100vh",
+        width: "100%",
+        height: "100%",
+        minHeight: "100dvh",
         backgroundColor: "#7cac58",
       }}
     />

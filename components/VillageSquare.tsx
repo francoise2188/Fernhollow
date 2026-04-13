@@ -36,6 +36,17 @@ const GIRL_META: Record<string, { emoji: string; color: string; name: string }> 
 
 const ARCHIVE_ORDER = ["clover", "rosie", "scout", "wren"];
 
+function platformLabel(platform: string, contentType: string): string {
+  if (platform === "facebook_group") return "📣 Magnet Makers Collective";
+  if (platform === "facebook") return "📘 Facebook Page";
+  if (platform === "instagram") return "📸 Instagram";
+  if (contentType === "video_idea") return "🎬 Video/Carousel Idea";
+  if (contentType === "blog_post") return "📝 Blog Post";
+  if (platform === "printbooth") return "🌐 PrintBooth Blog";
+  if (platform === "blirt") return "🌐 Blirt Blog";
+  return platform || contentType;
+}
+
 function CraftRoomButton({ contentId }: { contentId: string }) {
   const { toast } = useFernhollowToast();
   const [busy, setBusy] = useState(false);
@@ -171,11 +182,10 @@ function BriefingCard({
               padding: "0.15rem 0.5rem",
               borderRadius: "20px",
               fontWeight: 600,
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
+              letterSpacing: "0.03em",
             }}
           >
-            {briefing.content_type}
+            {platformLabel(briefing.platform ?? "", briefing.content_type)}
           </span>
           {isArchive && (
             <span
@@ -472,7 +482,10 @@ function BriefingCard({
           (briefing.content.startsWith("\u{1F4E3}") ||
             briefing.content.startsWith("\u{1F4F8}") ||
             briefing.content.startsWith("\u270D\uFE0F") ||
-            briefing.content.startsWith("\u{1F4DD}")) && (
+            briefing.content.startsWith("\u{1F4DD}") ||
+            briefing.content.startsWith("\u{1F4E3}") ||
+            briefing.content.startsWith("\u{1F465}") ||
+            briefing.content.startsWith("\u{1F3AC}")) && (
           <button
             type="button"
             onClick={async () => {

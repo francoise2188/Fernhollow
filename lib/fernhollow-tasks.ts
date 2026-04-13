@@ -1,3 +1,4 @@
+import { formatAutomationFailureMessage } from "@/lib/errors";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import type { FernhollowAgent } from "@/lib/fernhollow-memory";
 
@@ -49,11 +50,12 @@ export async function completeTask(
 
 export async function failTask(id: string, output: string): Promise<void> {
   const supabase = getSupabaseAdmin();
+  const safeOutput = formatAutomationFailureMessage(output);
   const { error } = await supabase
     .from("fernhollow_tasks")
     .update({
       status: "failed",
-      output,
+      output: safeOutput,
       completed_at: new Date().toISOString(),
     })
     .eq("id", id);

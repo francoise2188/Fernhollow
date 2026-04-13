@@ -22,7 +22,8 @@ export const CHARACTERS = {
 } as const;
 
 /**
- * Cozy People paper doll assets under `public/assets/fernhollow/cozy-people/` (no spaces; copy of the pack).
+ * Cozy People paper doll assets under `public/assets/fernhollow/cozy-people/`.
+ * Subfolders (only these): `acc`, `characters`, `clothes`, `eyes`, `hair` — keep paths under one of these.
  *
  * From the original pack `info.txt`:
  * - "GRID SIZE 32x32" — 32×32 px grid used when authoring the merged sheets.
@@ -150,7 +151,7 @@ export const SERENE_VILLAGE = {
 } as const;
 
 /**
- * Extra world tilesets referenced by `fernhollow-map.json` (Tiled `name` → load key must match).
+ * Extra world tilesets referenced by `fernhollow-map2.tmj` (Tiled `name` → load key must match).
  */
 export const MAP_EXTRA_TILESETS = {
   tileset: fernhollowAssetPath("Tiny garden_free pack", "tileset.png"),
@@ -164,13 +165,15 @@ export const MAP_EXTRA_TILESETS = {
 } as const;
 
 /**
- * Cozy People merged sheets used as Tiled tilesets (names must match the map’s tileset `name`).
- * Paths align with `fernhollow-map-2/*.tsx` (32×32 tile grid in Tiled over each PNG).
+ * Cozy People merged sheets for Phaser `load.image` / `addTilesetImage` (names must match Tiled).
+ * `fernhollow-map2.tmj` uses 16×16 tiles over these PNGs — keep the same sheet layout as in Tiled
+ * or re-export the map after changing source image dimensions.
  */
 export const COZY_PEOPLE_TILED_TILESETS = {
   char_all: fernhollowAssetPath("cozy-people", "characters", "char_all.png"),
   wavy: fernhollowAssetPath("cozy-people", "hair", "wavy.png"),
-  dress: fernhollowAssetPath("cozy-people", "clothes", "dress.png"),
+  /** Tiled tileset name has a trailing space. File on disk is `dress.png` in cozy-people. */
+  "dress ": fernhollowAssetPath("cozy-people", "clothes", "dress.png"),
   extra_long: fernhollowAssetPath("cozy-people", "hair", "extra_long.png"),
   extra_long_skirt: fernhollowAssetPath(
     "cozy-people",
@@ -178,6 +181,13 @@ export const COZY_PEOPLE_TILED_TILESETS = {
     "extra_long_skirt.png",
   ),
   spacebuns: fernhollowAssetPath("cozy-people", "hair", "spacebuns.png"),
+  braids: fernhollowAssetPath("cozy-people", "hair", "braids.png"),
+  /** Tiled name has trailing space; file matches Character v.2 naming. */
+  "long_straight ": fernhollowAssetPath(
+    "cozy-people",
+    "hair",
+    "long_straight .png",
+  ),
   floral: fernhollowAssetPath("cozy-people", "clothes", "floral.png"),
   pants: fernhollowAssetPath("cozy-people", "clothes", "pants.png"),
   shoes: fernhollowAssetPath("cozy-people", "clothes", "shoes.png"),

@@ -40,10 +40,30 @@ function timeAgo(dateStr: string | null): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
+const FAILURES_HIDE_BEFORE_KEY = "fh_activity_failures_hide_before_ms";
+
+function failureSortTime(f: FailureTask): number {
+  const raw = f.completed_at ?? f.run_at;
+  if (!raw) return 0;
+  const t = new Date(raw).getTime();
+  return Number.isFinite(t) ? t : 0;
+}
+
 export function ActivityFeed() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [failures, setFailures] = useState<FailureTask[]>([]);
+  const [hideFailuresBeforeMs, setHideFailuresBeforeMs] = useState(0);
   const [, setTick] = useState(0);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(FAILURES_HIDE_BEFORE_KEY);
+      const n = raw ? parseInt(raw, 10) : 0;
+      if (Number.isFinite(n) && n > 0) setHideFailuresBeforeMs(n);
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   useEffect(() => {
     const fetchTasks = () => {
@@ -65,7 +85,21 @@ export function ActivityFeed() {
     return () => clearInterval(id);
   }, []);
 
-  if (tasks.length === 0 && failures.length === 0) return null;
+  const visibleFailures = failures.filter(
+    (f) => failureSortTime(f) > hideFailuresBeforeMs,
+  );
+
+  const dismissFailureAlerts = () => {
+    const now = Date.now();
+    try {
+      localStorage.setItem(FAILURES_HIDE_BEFORE_KEY, String(now));
+    } catch {
+      /* ignore */
+    }
+    setHideFailuresBeforeMs(now);
+  };
+
+  if (tasks.length === 0 && visibleFailures.length === 0) return null;
 
   return (
     <>
@@ -156,12 +190,57 @@ export function ActivityFeed() {
           max-height: 5.5rem;
           overflow-y: auto;
         }
+
+        .activity-failures-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 0.75rem;
+          margin-bottom: 0.1rem;
+        }
+
+        .activity-failures-dismiss {
+          flex-shrink: 0;
+          font-family: inherit;
+          font-size: 0.62rem;
+          font-weight: 700;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+          padding: 0.2rem 0.5rem;
+          border-radius: 4px;
+          border: 1px solid rgba(245, 224, 220, 0.45);
+          background: rgba(40, 12, 12, 0.35);
+          color: #f5e0dc;
+          cursor: pointer;
+        }
+
+        .activity-failures-dismiss:hover {
+          background: rgba(60, 20, 20, 0.55);
+        }
+
+        .activity-failures-hint {
+          font-size: 0.58rem;
+          opacity: 0.75;
+          margin-top: 0.15rem;
+        }
       `}</style>
 
-      {failures.length > 0 && (
+      {visibleFailures.length > 0 && (
         <div className="activity-failures">
-          <strong style={{ letterSpacing: "0.06em" }}>Automation needs attention</strong>
-          {failures.map((f) => {
+          <div className="activity-failures-header">
+            <strong style={{ letterSpacing: "0.06em" }}>Automation needs attention</strong>
+            <button
+              type="button"
+              className="activity-failures-dismiss"
+              onClick={dismissFailureAlerts}
+            >
+              Hide for now
+            </button>
+          </div>
+          <div className="activity-failures-hint">
+            Last 24h only — hides until a newer failure happens.
+          </div>
+          {visibleFailures.map((f) => {
             const label = TASK_LABELS[f.task_type] ?? f.task_type.replace(/_/g, " ");
             const hint = f.output ? `: ${f.output.slice(0, 120)}${f.output.length > 120 ? "…" : ""}` : "";
             return (

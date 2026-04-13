@@ -1,5 +1,5 @@
 /**
- * Ensures fernhollow-map.json uses embedded tilesets (image + dimensions in JSON),
+ * Ensures fernhollow-map2.tmj uses embedded tilesets (image + dimensions in JSON),
  * not external .tsx references — those cannot load in the browser.
  *
  * Run: node scripts/verify-fernhollow-map.mjs
@@ -10,7 +10,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const mapPath = join(__dirname, "../public/assets/fernhollow/fernhollow-map.json");
+const mapPath = join(__dirname, "../public/assets/fernhollow/fernhollow-map2.tmj");
 
 const raw = readFileSync(mapPath, "utf8");
 const map = JSON.parse(raw);
@@ -48,7 +48,7 @@ for (let i = 0; i < map.tilesets.length; i++) {
 
 if (bad > 0) {
   console.error(
-    "\nFix: open the map in Tiled → Map → Save with embedded tilesets, or run:\n  node scripts/generate-fernhollow-tiled-map.mjs\n",
+    "\nWhy: Tiled help sometimes says “embedded” for a different export option. This check looks at the JSON file: each tileset must include an \"image\" field (PNG path). If you only see \"source\": \"…tsx\" and no \"image\", the tileset is still an external reference — Phaser cannot load .tsx in the browser.\n\nFix: Tiled → Map → Save with embedded tilesets (or Tileset → Embed Tileset), save `fernhollow-map2.tmj` into `public/assets/fernhollow/`. Or run (replaces map with a small test village):\n  node scripts/generate-fernhollow-tiled-map.mjs\n",
   );
   process.exit(1);
 }

@@ -23,8 +23,9 @@ export async function GET() {
     return true;
   });
 
+  /** Only surface failures from the last day (stale rows stay in DB but not in the banner). */
   const failureSince = new Date(
-    Date.now() - 7 * 24 * 60 * 60 * 1000,
+    Date.now() - 24 * 60 * 60 * 1000,
   ).toISOString();
 
   const { data: failedRows } = await supabase

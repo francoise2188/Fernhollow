@@ -175,7 +175,7 @@ export function GameChatOverlay({
       `}</style>
 
       <div
-        className="fh-overlay-wrap fixed inset-0 z-[55] flex items-end justify-center pb-6 pt-16 sm:pb-10"
+        className="fh-overlay-wrap fixed inset-0 z-[55] flex items-end justify-center pb-[max(1.5rem,env(safe-area-inset-bottom,0px))] pt-[max(4rem,env(safe-area-inset-top,0px))] sm:pb-[max(2.5rem,env(safe-area-inset-bottom,0px))]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="fh-dialogue-title"

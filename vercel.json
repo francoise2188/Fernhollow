@@ -15,6 +15,10 @@
     {
       "path": "/api/cron/community-scan",
       "schedule": "0 17 * * 1"
+    },
+    {
+      "path": "/api/cron/weekly-printbooth-content",
+      "schedule": "0 13 * * 1"
     }
   ]
 }

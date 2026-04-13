@@ -1,5 +1,5 @@
 /**
- * Writes public/assets/fernhollow/fernhollow-map.json (Tiled 1.10 orthogonal).
+ * Writes public/assets/fernhollow/fernhollow-map2.tmj (Tiled 1.10 orthogonal).
  * Run: node scripts/generate-fernhollow-tiled-map.mjs
  */
 import { writeFileSync, mkdirSync } from "node:fs";
@@ -7,7 +7,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const out = join(__dirname, "../public/assets/fernhollow/fernhollow-map.json");
+const out = join(__dirname, "../public/assets/fernhollow/fernhollow-map2.tmj");
 
 const W = 30;
 const H = 20;

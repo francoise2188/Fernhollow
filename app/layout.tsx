@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { FernhollowAudio, FernhollowMuteButton } from "@/components/FernhollowAudio";
 import "./globals.css";
@@ -17,6 +17,14 @@ export const metadata: Metadata = {
   title: "Fernhollow",
   description:
     "A tiny village in the woods: Clover, Rosie, Scout, and Wren — your agentic home for Blirt, Saudade, and PrintBooth.",
+};
+
+/** Phones and notched screens: correct scale, full-bleed game, browser chrome color. */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#0f160f",
 };
 
 export default function RootLayout({

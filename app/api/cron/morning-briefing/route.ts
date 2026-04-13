@@ -82,7 +82,8 @@ export async function GET(request: Request) {
   type ErrRow = { agent: string; error: string };
   const results: (OkRow | ErrRow)[] = [];
 
-  for (const agent of BRIEFING_AGENTS) {
+  for (let i = 0; i < BRIEFING_AGENTS.length; i++) {
+    const agent = BRIEFING_AGENTS[i];
     let taskId: string | null = null;
     try {
       const { id } = await startTask({
@@ -163,6 +164,11 @@ export async function GET(request: Request) {
       const msg = getErrorMessage(e);
       if (taskId) await failTask(taskId, msg);
       results.push({ agent, error: msg });
+    }
+
+    /* Space out API calls so four briefings don’t hit Claude in one burst. */
+    if (i < BRIEFING_AGENTS.length - 1) {
+      await new Promise((r) => setTimeout(r, 2800));
     }
   }
 

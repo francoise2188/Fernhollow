@@ -73,12 +73,12 @@ export function FernhollowGameShell() {
           />
         ) : null}
 
-        <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-[57]">
+        <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-[57] pb-[env(safe-area-inset-bottom,0px)]">
           <ActivityFeed />
         </div>
 
         <div className="pointer-events-none absolute inset-0 z-[58]">
-          <div className="pointer-events-auto absolute top-4 right-4 flex flex-col items-end gap-2">
+          <div className="pointer-events-auto absolute top-[max(1rem,env(safe-area-inset-top,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] flex flex-col items-end gap-2">
             <div className="flex flex-wrap items-center justify-end gap-2">
               {openSlug !== "wrens-house" ? <UsageSummaryStrip /> : null}
               <LogoutButton />

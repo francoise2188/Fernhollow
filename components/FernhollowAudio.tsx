@@ -65,7 +65,7 @@ export function FernhollowMuteButton() {
           setMutedUi(toggleMute());
         })();
       }}
-      className="fixed right-4 bottom-4 z-[100] rounded-full border border-stone-300 bg-white/90 px-3 py-2 text-sm text-stone-800 shadow-sm backdrop-blur dark:border-stone-600 dark:bg-stone-900/90 dark:text-stone-100"
+      className="fixed z-[100] rounded-full border border-stone-300 bg-white/90 px-3 py-2 text-sm text-stone-800 shadow-sm backdrop-blur dark:border-stone-600 dark:bg-stone-900/90 dark:text-stone-100 bottom-[max(1rem,env(safe-area-inset-bottom,0px))] right-[max(1rem,env(safe-area-inset-right,0px))]"
       aria-label={muted ? "Unmute Fernhollow audio" : "Mute Fernhollow audio"}
     >
       {muted ? "Unmute" : "Mute"}

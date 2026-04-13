@@ -1,6 +1,24 @@
 import Anthropic from "@anthropic-ai/sdk";
+import type {
+  Message,
+  MessageCreateParamsNonStreaming,
+} from "@anthropic-ai/sdk/resources/messages/messages";
+import { withAnthropicRetries } from "@/lib/anthropic-retry";
 import { getErrorMessage } from "@/lib/errors";
 import { scheduleAnthropicMessageUsage } from "@/lib/anthropic-usage-log";
+
+type AnthropicClient = InstanceType<typeof Anthropic>;
+
+async function messagesCreateWithRetry(
+  client: AnthropicClient,
+  label: string,
+  params: MessageCreateParamsNonStreaming,
+): Promise<Message> {
+  return withAnthropicRetries(() => client.messages.create(params), {
+    label,
+    maxRetries: 5,
+  });
+}
 
 const WEB_SEARCH_TOOL: Anthropic.Tool = {
   type: "web_search_20250305",
@@ -60,15 +78,19 @@ export async function completeConversation(input: {
   const client = new Anthropic({ apiKey: key });
 
   try {
-    const response = await client.messages.create({
-      model,
-      max_tokens: input.maxTokens ?? 4096,
-      system: input.system,
-      messages: input.messages.map((m) => ({
-        role: m.role,
-        content: m.content,
-      })),
-    });
+    const response = await messagesCreateWithRetry(
+      client,
+      "completeConversation",
+      {
+        model,
+        max_tokens: input.maxTokens ?? 4096,
+        system: input.system,
+        messages: input.messages.map((m) => ({
+          role: m.role,
+          content: m.content,
+        })),
+      },
+    );
 
     scheduleAnthropicMessageUsage({
       model,
@@ -117,13 +139,17 @@ export async function completeWithSearch(input: {
   }));
 
   let messages: Anthropic.MessageParam[] = [...baseMessages];
-  let response = await client.messages.create({
-    model,
-    max_tokens: maxTokens,
-    system: input.system,
-    messages,
-    tools: [WEB_SEARCH_TOOL],
-  });
+  let response = await messagesCreateWithRetry(
+    client,
+    "completeWithSearch_r0",
+    {
+      model,
+      max_tokens: maxTokens,
+      system: input.system,
+      messages,
+      tools: [WEB_SEARCH_TOOL],
+    },
+  );
 
   const textChunks: string[] = [];
 
@@ -148,13 +174,17 @@ export async function completeWithSearch(input: {
       { role: "assistant", content: response.content },
     ];
 
-    response = await client.messages.create({
-      model,
-      max_tokens: maxTokens,
-      system: input.system,
-      messages,
-      tools: [WEB_SEARCH_TOOL],
-    });
+    response = await messagesCreateWithRetry(
+      client,
+      `completeWithSearch_r${round + 1}`,
+      {
+        model,
+        max_tokens: maxTokens,
+        system: input.system,
+        messages,
+        tools: [WEB_SEARCH_TOOL],
+      },
+    );
   }
 
   const text = textChunks.join("\n\n").trim();
@@ -177,15 +207,19 @@ export async function completeWithHaiku(input: {
   const client = new Anthropic({ apiKey: key });
 
   const haikuModel = "claude-haiku-4-5-20251001";
-  const response = await client.messages.create({
-    model: haikuModel,
-    max_tokens: input.maxTokens ?? 300,
-    system: input.system,
-    messages: input.messages.map((m) => ({
-      role: m.role,
-      content: m.content,
-    })),
-  });
+  const response = await messagesCreateWithRetry(
+    client,
+    "completeWithHaiku",
+    {
+      model: haikuModel,
+      max_tokens: input.maxTokens ?? 300,
+      system: input.system,
+      messages: input.messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+      })),
+    },
+  );
 
   scheduleAnthropicMessageUsage({
     model: haikuModel,
@@ -259,16 +293,20 @@ export async function completeWithTools(input: {
     } as Anthropic.Tool,
   ];
 
-  const response = await client.messages.create({
-    model,
-    max_tokens: input.maxTokens ?? 1024,
-    system: input.system,
-    messages: input.messages.map((m) => ({
-      role: m.role,
-      content: m.content,
-    })),
-    tools,
-  });
+  const response = await messagesCreateWithRetry(
+    client,
+    "completeWithTools_r1",
+    {
+      model,
+      max_tokens: input.maxTokens ?? 1024,
+      system: input.system,
+      messages: input.messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+      })),
+      tools,
+    },
+  );
 
   scheduleAnthropicMessageUsage({
     model,
@@ -298,32 +336,36 @@ export async function completeWithTools(input: {
     .map((b) => b.text)
     .join("\n\n");
 
-  const followUp = await client.messages.create({
-    model,
-    max_tokens: input.maxTokens ?? 1024,
-    system: input.system,
-    messages: [
-      ...input.messages.map((m) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      })),
-      {
-        role: "assistant" as const,
-        content: response.content,
-      },
-      {
-        role: "user" as const,
-        content: [
-          {
-            type: "tool_result" as const,
-            tool_use_id: toolUseBlock.id,
-            content: toolResult,
-          },
-        ],
-      },
-    ],
-    tools,
-  });
+  const followUp = await messagesCreateWithRetry(
+    client,
+    "completeWithTools_r2",
+    {
+      model,
+      max_tokens: input.maxTokens ?? 1024,
+      system: input.system,
+      messages: [
+        ...input.messages.map((m) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        })),
+        {
+          role: "assistant" as const,
+          content: response.content,
+        },
+        {
+          role: "user" as const,
+          content: [
+            {
+              type: "tool_result" as const,
+              tool_use_id: toolUseBlock.id,
+              content: toolResult,
+            },
+          ],
+        },
+      ],
+      tools,
+    },
+  );
 
   scheduleAnthropicMessageUsage({
     model,
