@@ -13,10 +13,11 @@ async function messagesCreateWithRetry(
   client: AnthropicClient,
   label: string,
   params: MessageCreateParamsNonStreaming,
+  maxRetries = 5,
 ): Promise<Message> {
   return withAnthropicRetries(() => client.messages.create(params), {
     label,
-    maxRetries: 5,
+    maxRetries,
   });
 }
 
@@ -122,6 +123,8 @@ export async function completeWithSearch(input: {
   system: string;
   messages: ChatTurn[];
   maxTokens?: number;
+  /** Extra attempts when Anthropic returns 529 / overload (cron jobs). Default 5. */
+  maxRetries?: number;
 }): Promise<string> {
   const key = normalizeApiKey(process.env.ANTHROPIC_API_KEY ?? "");
   if (!key) throw new Error("Missing ANTHROPIC_API_KEY");
@@ -133,6 +136,7 @@ export async function completeWithSearch(input: {
   const client = new Anthropic({ apiKey: key });
 
   const maxTokens = input.maxTokens ?? 4096;
+  const maxRetries = input.maxRetries ?? 5;
   const baseMessages: Anthropic.MessageParam[] = input.messages.map((m) => ({
     role: m.role,
     content: m.content,
@@ -149,6 +153,7 @@ export async function completeWithSearch(input: {
       messages,
       tools: [WEB_SEARCH_TOOL],
     },
+    maxRetries,
   );
 
   const textChunks: string[] = [];
@@ -184,6 +189,7 @@ export async function completeWithSearch(input: {
         messages,
         tools: [WEB_SEARCH_TOOL],
       },
+      maxRetries,
     );
   }
 

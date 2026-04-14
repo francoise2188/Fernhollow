@@ -3,6 +3,23 @@ import { readAuthFromCookies } from "@/lib/auth";
 import { triggerContentPipeline } from "@/lib/content-pipeline";
 import { getSupabaseAdmin } from "@/lib/supabase";
 
+/** Permanently remove a content row (e.g. clear clutter from Archive without changing approve/dismiss). */
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const authed = await readAuthFromCookies();
+  if (!authed) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id } = await params;
+  const supabase = getSupabaseAdmin();
+
+  const { error } = await supabase.from("fernhollow_content").delete().eq("id", id);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },

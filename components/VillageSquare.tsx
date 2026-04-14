@@ -118,6 +118,7 @@ function BriefingCard({
   isArchive,
   onAct,
   onRemoveFromInbox,
+  onRemoveFromArchive,
   expandedCard,
   setExpandedCard,
   feedbackNotes,
@@ -134,6 +135,8 @@ function BriefingCard({
     stopSuggestion?: boolean,
   ) => void;
   onRemoveFromInbox: (id: string) => void;
+  /** Archive only: delete row so it leaves the list (not approve/dismiss). */
+  onRemoveFromArchive?: (id: string) => void;
   expandedCard: string | null;
   setExpandedCard: (id: string | null) => void;
   feedbackNotes: Record<string, string>;
@@ -205,12 +208,56 @@ function BriefingCard({
             </span>
           )}
         </div>
-        <span style={{ fontSize: "0.65rem", color: "#a09070" }}>
-          {new Date(briefing.created_at).toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-          })}
-        </span>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.35rem",
+            flexShrink: 0,
+          }}
+        >
+          {isArchive && onRemoveFromArchive ? (
+            <button
+              type="button"
+              title="Remove from archive"
+              aria-label="Remove from archive"
+              onClick={() => {
+                if (
+                  !confirm(
+                    "Remove this from your archive? It will be deleted permanently.",
+                  )
+                ) {
+                  return;
+                }
+                onRemoveFromArchive(briefing.id);
+              }}
+              style={{
+                width: "1.65rem",
+                height: "1.65rem",
+                padding: 0,
+                borderRadius: "8px",
+                border: "1px solid rgba(139,109,56,0.35)",
+                background: "rgba(255,255,255,0.65)",
+                fontSize: "1rem",
+                lineHeight: 1,
+                color: "#7a6a5a",
+                cursor: "pointer",
+                fontFamily: "Nunito, sans-serif",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {"\u00D7"}
+            </button>
+          ) : null}
+          <span style={{ fontSize: "0.65rem", color: "#a09070" }}>
+            {new Date(briefing.created_at).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            })}
+          </span>
+        </div>
       </div>
 
       <div style={{ padding: "0.85rem 1rem" }}>
@@ -699,6 +746,7 @@ function BriefingCard({
 }
 
 export function VillageSquare() {
+  const { toast } = useFernhollowToast();
   const [tab, setTab] = useState<Tab>("draft");
   const [briefings, setBriefings] = useState<Briefing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -757,6 +805,23 @@ export function VillageSquare() {
 
   const onRemoveFromInbox = (id: string) => {
     setBriefings((prev) => prev.filter((x) => x.id !== id));
+  };
+
+  const onRemoveFromArchive = async (id: string) => {
+    const previous = briefings;
+    setBriefings((prev) => prev.filter((x) => x.id !== id));
+    setError(null);
+    try {
+      const res = await fetch(`/api/briefings/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const d = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(d.error ?? res.statusText);
+      }
+      toast("Removed from archive.");
+    } catch {
+      setBriefings(previous);
+      setError("Could not remove that item. Try again.");
+    }
   };
 
   const sortedBriefings = useMemo(
@@ -937,6 +1002,7 @@ export function VillageSquare() {
                   isArchive
                   onAct={onAct}
                   onRemoveFromInbox={onRemoveFromInbox}
+                  onRemoveFromArchive={onRemoveFromArchive}
                   expandedCard={expandedCard}
                   setExpandedCard={setExpandedCard}
                   feedbackNotes={feedbackNotes}

@@ -18,6 +18,7 @@ export function formatAutomationFailureMessage(e: unknown): string {
   const lower = raw.toLowerCase();
   if (
     lower.includes("overloaded") ||
+    lower.includes("overloaded_error") ||
     lower.includes("529") ||
     lower.includes("rate_limit") ||
     /\b429\b/.test(lower)

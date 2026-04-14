@@ -8,7 +8,7 @@ import {
   getFeedbackSummaryForAgent,
 } from "@/lib/fernhollow-feedback";
 import { sendChimesForBriefing } from "@/lib/fernhollow-chimes";
-import { getErrorMessage } from "@/lib/errors";
+import { formatAutomationFailureMessage, getErrorMessage } from "@/lib/errors";
 import { completeTask, failTask, startTask } from "@/lib/fernhollow-tasks";
 import {
   fetchRelevantMemories,
@@ -123,6 +123,8 @@ export async function GET(request: Request) {
           },
         ],
         maxTokens: 700,
+        /** Daily cron: Anthropic often returns 529 when four Sonnet+search calls run close together. */
+        maxRetries: 10,
       });
 
       const { data: content, error: insErr } = await supabase
@@ -161,14 +163,17 @@ export async function GET(request: Request) {
       }
     } catch (e) {
       console.error(`morning-briefing:${agent}`, e);
-      const msg = getErrorMessage(e);
-      if (taskId) await failTask(taskId, msg);
-      results.push({ agent, error: msg });
+      const rawMsg = getErrorMessage(e);
+      if (taskId) await failTask(taskId, rawMsg);
+      results.push({
+        agent,
+        error: formatAutomationFailureMessage(rawMsg),
+      });
     }
 
     /* Space out API calls so four briefings don’t hit Claude in one burst. */
     if (i < BRIEFING_AGENTS.length - 1) {
-      await new Promise((r) => setTimeout(r, 2800));
+      await new Promise((r) => setTimeout(r, 5200));
     }
   }
 
