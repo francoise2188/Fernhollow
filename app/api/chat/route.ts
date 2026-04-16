@@ -95,6 +95,22 @@ function messageNeedsWebSearch(message: string): boolean {
     "january",
     "february",
     "march",
+    // Phrases people use when they expect live lookup (incl. Wren / Etsy / income chats)
+    "browse the",
+    "on the internet",
+    "on the web",
+    "look it up",
+    "google",
+    "can you find",
+    "search for",
+    "search the",
+    "get the info",
+    "look online",
+    "real time",
+    "live data",
+    "right now on",
+    "what are people",
+    "what is selling",
   ];
   const lower = message.toLowerCase();
   return searchTriggers.some((trigger) => lower.includes(trigger));
@@ -232,6 +248,18 @@ export async function POST(request: Request) {
         .join("\n\n");
 
       if (agent === "wren") {
+        const needsSearch = messageNeedsWebSearch(message);
+        if (needsSearch) {
+          const searchAwareSystem = `${system}
+
+WEB SEARCH (this turn):
+You have Anthropic's web_search tool for this reply. When Frankie asks for current facts, prices, trends, Etsy/market info, or anything that needs up-to-date sources, use web_search before answering — then summarize what you found in your own words. Do not say you cannot browse the web during this turn.`;
+          reply = await completeWithSearch({
+            system: searchAwareSystem,
+            messages: anthropicMessages,
+            maxTokens: 4096,
+          });
+        } else {
         const toolAwareSystem = `${system}
 
 TOOL POLICY FOR IMAGE REQUESTS:
@@ -297,6 +325,7 @@ Never claim an image was generated unless the tool result explicitly confirms su
             return "Unknown tool.";
           },
         });
+        }
       } else {
         const needsSearch = messageNeedsWebSearch(message);
         reply = needsSearch
