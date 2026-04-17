@@ -24,12 +24,8 @@ import {
 
 export const runtime = "nodejs";
 
-const BRIEFING_AGENTS: Exclude<FernhollowAgent, "shared">[] = [
-  "clover",
-  "rosie",
-  "scout",
-  "wren",
-];
+/** Morning briefing cron: Wren only (income / Etsy / PrintBooth focus). Re-add others when you want. */
+const BRIEFING_AGENTS: Exclude<FernhollowAgent, "shared">[] = ["wren"];
 
 function morningBriefingLayer(agent: Exclude<FernhollowAgent, "shared">): string {
   const base = `You are writing a short morning briefing for Frankie (scheduled job). Coffee on the porch with your best friend: warm, human, not a project manager. Tight paragraphs. No bullet lists. Aim under about 220 words. End with one short, concrete offer in your voice: invite Frankie to let you take a specific next step (draft something, research something, follow up, or build a small piece). Phrase it as a warm question or invitation—like asking if she wants you to handle it—not as a bullet list.`;
@@ -48,7 +44,7 @@ function morningBriefingLayer(agent: Exclude<FernhollowAgent, "shared">): string
   }
 }
 
-/** Daily ~8am CT: each girl drafts a morning briefing (draft content rows). */
+/** Daily ~8am CT (14:00 UTC): Wren drafts the morning briefing (draft row). */
 export async function GET(request: Request) {
   const gate = verifyCronRequest(request);
   if (!gate.ok) {
@@ -171,7 +167,7 @@ export async function GET(request: Request) {
       });
     }
 
-    /* Space out API calls so four briefings don’t hit Claude in one burst. */
+    /* Space out when multiple agents run (unused while Wren-only). */
     if (i < BRIEFING_AGENTS.length - 1) {
       await new Promise((r) => setTimeout(r, 5200));
     }
