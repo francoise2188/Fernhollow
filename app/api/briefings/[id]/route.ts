@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { readAuthFromCookies } from "@/lib/auth";
 import { triggerContentPipeline } from "@/lib/content-pipeline";
+import { syncApprovedWrenEmailBriefingToHouseChat } from "@/lib/sync-approved-wren-briefing";
 import { getSupabaseAdmin } from "@/lib/supabase";
 
 /** Permanently remove a content row (e.g. clear clutter from Archive without changing approve/dismiss). */
@@ -70,6 +71,11 @@ export async function PATCH(
 
   // Only morning briefings (email) should spawn follow-up drafts; not images or pipeline outputs.
   if (status === "approved" && briefing.content_type === "email") {
+    if (briefing.agent === "wren") {
+      void syncApprovedWrenEmailBriefingToHouseChat({
+        content: briefing.content,
+      });
+    }
     void triggerContentPipeline(briefing);
   }
 

@@ -180,6 +180,8 @@ export async function GET(request: Request) {
     {
       ok: failures.length === 0,
       results,
+      /** Who ran this cron (verify in Vercel logs if you still see other girls’ morning tasks). */
+      briefingAgents: BRIEFING_AGENTS,
     },
     { status: allFailed ? 500 : 200 },
   );
